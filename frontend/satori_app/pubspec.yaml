@@ -1,0 +1,27 @@
+name: satori_app
+description: Satori Pastelería - App de gestión
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Navegación
+  go_router: ^13.2.0
+  # Gráficas
+  fl_chart: ^0.68.0
+  # Calendario
+  table_calendar: ^3.1.2
+  # Iconos extra
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
