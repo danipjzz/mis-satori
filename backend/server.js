@@ -1,21 +1,18 @@
 require('dotenv').config();
 const express = require('express');
-const cors = require('cors');
+
+const pedidosRoutes = require('./src/routes/pedidos');
 
 const app = express();
 
-//middlewares
-app.use(cors());
 app.use(express.json());
 
-//ruta de prueba
+app.use('/pedidos', pedidosRoutes);
+
 app.get('/', (req, res) => {
-    res.json({ mensaje: "Backend MIS Repostería funcionando 🚀" });
+  res.send('API MIS Satori funcionando');
 });
 
-//puerto
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-    console.log(`Servidor corriendo en puerto ${PORT}`);
-})
+app.listen(process.env.PORT, () => {
+  console.log(`Server running on port ${process.env.PORT}`);
+});
