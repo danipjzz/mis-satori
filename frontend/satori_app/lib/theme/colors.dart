@@ -28,6 +28,13 @@ class SatoriColors {
   static const Color textDark    = Color(0xFF3D2B1F);
   static const Color textMid     = Color(0xFF7A5C52);
   static const Color textLight   = Color(0xFFB89FA0);
+
+  // 🔵 Ring Colors (BackgroundCircles variants)
+  static const Color emerald     = Color(0xFF10B981); // primary ring 0
+  static const Color cyanRing    = Color(0xFF22D3EE); // primary ring 1
+  static const Color violetRing  = Color(0xFF8B5CF6); // secondary ring 0
+  static const Color fuchsiaRing = Color(0xFFD946EF); // secondary ring 1
+  static const Color roseRing    = Color(0xFFF43F5E); // octonary/quinary ring
 }
 
 class SatoriTheme {

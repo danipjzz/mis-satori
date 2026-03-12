@@ -574,10 +574,23 @@ class _AuroraBackground extends StatelessWidget {
       builder: (_, __) {
         final t = ctrl.value;
         
+        // Define our branded soft pastel colors
+        final color1 = Color.lerp(SatoriColors.pinkPale, SatoriColors.yellowLight, (math.sin(t * math.pi * 2) + 1) / 2)!;
+        final color2 = Color.lerp(SatoriColors.yellowLight, SatoriColors.tealPale, (math.cos(t * math.pi * 1.5) + 1) / 2)!;
+        final color3 = Color.lerp(SatoriColors.tealLight.withValues(alpha: 0.6), SatoriColors.pinkLight, (math.sin(t * math.pi * 0.8) + 1) / 2)!;
+
         return Stack(
           children: [
-            // Solid White Base
-            Container(color: Colors.white),
+            // Animated Soft Mesh Base
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft, end: Alignment.bottomRight,
+                  colors: [color1, color2, color3],
+                  stops: const [0.0, 0.5, 1.0],
+                ),
+              ),
+            ),
             // Subtle Dot Grid pattern
             Positioned.fill(
               child: CustomPaint(
@@ -590,7 +603,7 @@ class _AuroraBackground extends StatelessWidget {
                 painter: _StarFieldPainter(t: t),
               ),
             ),
-            // Aurora Blobs - Pre-blurred for performance
+            // Aurora Blobs - Adjusted to complement the pastel mesh
             // Vibrant Rose blob
             _blob(550, const Color(0xFFFF758C), 0.28,
               left: -80 + 130 * math.sin(t * math.pi * 0.8),
@@ -607,6 +620,11 @@ class _AuroraBackground extends StatelessWidget {
             _blob(400, SatoriColors.teal, 0.22,
               right: 20 + 60 * math.sin(t * math.pi * 1.1),
               bottom: -60 + 70 * math.cos(t * math.pi * 0.8)),
+            // Blur everything into smooth aurora
+            BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 120, sigmaY: 120),
+              child: Container(color: Colors.transparent),
+            ),
           ],
         );
       },
@@ -615,20 +633,15 @@ class _AuroraBackground extends StatelessWidget {
 
   Widget _blob(double size, Color color, double opacity,
       {double? left, double? right, double? top, double? bottom}) {
-    // Optimization: Use BoxShadow for blurred edges instead of full-screen BackdropFilter
     return Positioned(
       left: left, right: right, top: top, bottom: bottom,
       child: Container(
         width: size, height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: color.withAlpha((opacity * 255).round()),
-              blurRadius: 100, // Large blur radius on the shape itself
-              spreadRadius: 20,
-            )
-          ],
+          gradient: RadialGradient(colors: [
+            color.withAlpha((opacity * 255).round()), color.withAlpha(0),
+          ]),
         ),
       ),
     );

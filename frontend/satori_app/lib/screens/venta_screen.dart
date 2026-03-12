@@ -1,7 +1,9 @@
-// lib/screens/venta_screen.dart
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../theme/colors.dart';
+import '../widgets/bounce.dart';
 
 // ─── MODELOS ─────────────────────────────────────────────────────────────────
 class Producto {
@@ -105,32 +107,51 @@ class _VentaScreenState extends State<VentaScreen> {
               child: Row(
                 children: [
                   _CircleBtn(icon: '‹', color: SatoriColors.pinkPrimary, onTap: () => context.go('/')),
-                  const Expanded(child: Center(child: Text('🧾 Punto de Venta', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: SatoriColors.textDark)))),
-                  GestureDetector(
-                    onTap: _totalItems > 0 ? () => setState(() => _showCarrito = true) : null,
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Container(
-                          width: 38, height: 38,
-                          decoration: BoxDecoration(
-                            color: _totalItems > 0 ? SatoriColors.teal : SatoriColors.white,
-                            shape: BoxShape.circle,
-                            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 6)],
+                  Expanded(
+                    child: Center(
+                      child: ShaderMask(
+                        shaderCallback: (b) => const LinearGradient(
+                          colors: [SatoriColors.pinkDeep, SatoriColors.textDark],
+                        ).createShader(b),
+                        child: Text(
+                          'Punto de Venta',
+                          style: GoogleFonts.cormorantGaramond(
+                            fontSize: 28, fontWeight: FontWeight.w900,
+                            fontStyle: FontStyle.italic, color: Colors.white,
+                            letterSpacing: -1.0,
                           ),
-                          child: const Center(child: Text('🛒', style: TextStyle(fontSize: 18))),
                         ),
-                        if (_totalItems > 0)
-                          Positioned(
-                            top: -4, right: -4,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
-                              height: 18,
-                              decoration: BoxDecoration(color: SatoriColors.pinkDeep, borderRadius: BorderRadius.circular(9)),
-                              child: Center(child: Text('$_totalItems', style: const TextStyle(color: SatoriColors.white, fontSize: 10, fontWeight: FontWeight.w800))),
+                      ),
+                    ),
+                  ),
+                  SatoriBounce(
+                    onTap: _totalItems > 0 ? () => setState(() => _showCarrito = true) : null,
+                    child: Padding(
+                      padding: const EdgeInsets.all(4.0),
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(
+                            width: 38, height: 38,
+                            decoration: BoxDecoration(
+                              color: _totalItems > 0 ? SatoriColors.teal : SatoriColors.white,
+                              shape: BoxShape.circle,
+                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 6)],
                             ),
+                            child: const Center(child: Text('🛒', style: TextStyle(fontSize: 18))),
                           ),
-                      ],
+                          if (_totalItems > 0)
+                            Positioned(
+                              top: -4, right: -4,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 4),
+                                height: 18,
+                                decoration: BoxDecoration(color: SatoriColors.pinkDeep, borderRadius: BorderRadius.circular(9)),
+                                child: Center(child: Text('$_totalItems', style: const TextStyle(color: SatoriColors.white, fontSize: 10, fontWeight: FontWeight.w800))),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -148,14 +169,20 @@ class _VentaScreenState extends State<VentaScreen> {
                 itemBuilder: (_, i) {
                   final cat = _categorias[i];
                   final active = _catActiva == cat['id'];
-                  return GestureDetector(
+                  return SatoriBounce(
                     onTap: () => setState(() => _catActiva = cat['id']!),
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 14),
                       decoration: BoxDecoration(
-                        color: active ? SatoriColors.pinkPrimary : SatoriColors.white,
+                        color: active ? SatoriColors.pinkPrimary : Colors.white.withOpacity(0.6),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: active ? SatoriColors.pinkDeep : Colors.transparent, width: 1.5),
+                        border: Border.all(color: active ? SatoriColors.pinkDeep : Colors.white.withOpacity(0.4), width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFE2E8F0).withOpacity(active ? 0.4 : 0.2),
+                            blurRadius: 10, offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
                       child: Text(cat['label']!, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: active ? SatoriColors.white : SatoriColors.textMid)),
                     ),
@@ -168,56 +195,73 @@ class _VentaScreenState extends State<VentaScreen> {
 
             // Grid de productos
             Expanded(
-              child: GridView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 0.85,
-                ),
-                itemCount: _filtrados.length,
-                itemBuilder: (_, i) {
-                  final p = _filtrados[i];
-                  final qty = _carrito[p.id] ?? 0;
-                  return Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: SatoriColors.white,
-                      borderRadius: BorderRadius.circular(18),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 8, offset: const Offset(0, 3))],
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final crossCount = constraints.maxWidth > 800 ? 5 : (constraints.maxWidth > 500 ? 3 : 2);
+                  return GridView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: crossCount, 
+                      crossAxisSpacing: 10, 
+                      mainAxisSpacing: 10, 
+                      childAspectRatio: 0.82,
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(p.emoji, style: const TextStyle(fontSize: 32)),
-                        const SizedBox(height: 6),
-                        Text(p.nombre, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: SatoriColors.textDark)),
-                        const SizedBox(height: 2),
-                        Text(p.desc, style: const TextStyle(fontSize: 11, color: SatoriColors.textLight)),
-                        const SizedBox(height: 8),
-                        Text('\$${p.precio}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: SatoriColors.pinkPrimary)),
-                        const Spacer(),
-                        if (qty == 0)
-                          GestureDetector(
-                            onTap: () => _add(p.id),
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              decoration: BoxDecoration(color: SatoriColors.pinkLight, borderRadius: BorderRadius.circular(10)),
-                              child: const Center(child: Text('Agregar', style: TextStyle(color: SatoriColors.pinkDeep, fontWeight: FontWeight.w700, fontSize: 13))),
-                            ),
-                          )
-                        else
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                    itemCount: _filtrados.length,
+                    itemBuilder: (_, i) {
+                      final p = _filtrados[i];
+                      final qty = _carrito[p.id] ?? 0;
+                      return MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, 4))],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _CounterBtn(label: '−', onTap: () => _sub(p.id), active: false),
-                              const SizedBox(width: 8),
-                              Text('$qty', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: SatoriColors.textDark)),
-                              const SizedBox(width: 8),
-                              _CounterBtn(label: '+', onTap: () => _add(p.id), active: true),
+                              Text(p.emoji, style: const TextStyle(fontSize: 32)),
+                              const SizedBox(height: 6),
+                              Text(p.nombre, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: SatoriColors.textDark, letterSpacing: -0.5)),
+                              const SizedBox(height: 2),
+                              Text(p.desc, style: const TextStyle(fontSize: 11, color: SatoriColors.textLight)),
+                              const SizedBox(height: 8),
+                              Text('\$${p.precio}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: SatoriColors.pinkPrimary)),
+                              const Spacer(),
+                              if (qty == 0)
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: SatoriBounce(
+                                    onTap: () => _add(p.id),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 10),
+                                      decoration: BoxDecoration(
+                                        color: SatoriColors.teal,
+                                        borderRadius: BorderRadius.circular(12),
+                                        boxShadow: [BoxShadow(color: SatoriColors.teal.withOpacity(0.3), blurRadius: 6, offset: const Offset(0, 3))],
+                                      ),
+                                      child: const Center(child: Text('Agregar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 0.5))),
+                                    ),
+                                  ),
+                                )
+                              else
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    _CounterBtn(label: '−', onTap: () => _sub(p.id), active: false),
+                                    const SizedBox(width: 8),
+                                    Text('$qty', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: SatoriColors.textDark)),
+                                    const SizedBox(width: 8),
+                                    _CounterBtn(label: '+', onTap: () => _add(p.id), active: true),
+                                  ],
+                                ),
                             ],
                           ),
-                      ],
-                    ),
+                        ),
+                       );
+                    },
                   );
                 },
               ),
@@ -226,20 +270,28 @@ class _VentaScreenState extends State<VentaScreen> {
         ),
       ),
 
-      // Barra flotante
+      // Barra flotante (CTA)
       bottomNavigationBar: _totalItems > 0
-          ? GestureDetector(
-              onTap: () => setState(() => _showCarrito = true),
-              child: Container(
-                margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-                decoration: BoxDecoration(color: SatoriColors.textDark, borderRadius: BorderRadius.circular(18), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 14, offset: const Offset(0, 4))]),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('🛒 $_totalItems artículo${_totalItems != 1 ? "s" : ""}', style: const TextStyle(color: SatoriColors.white, fontSize: 14, fontWeight: FontWeight.w600)),
-                    Text('Ver orden › \$$_subtotal', style: const TextStyle(color: SatoriColors.teal, fontSize: 14, fontWeight: FontWeight.w700)),
-                  ],
+          ? SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: SatoriBounce(
+                  onTap: () => setState(() => _showCarrito = true),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 24),
+                    decoration: BoxDecoration(
+                      color: SatoriColors.pinkPrimary,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [BoxShadow(color: SatoriColors.pinkDeep.withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 4))],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('🛒 $_totalItems artículo${_totalItems != 1 ? "s" : ""}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                        Text('Ver orden › \$$_subtotal', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 0.5, color: Colors.white)),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             )
@@ -299,18 +351,19 @@ class _VentaScreenState extends State<VentaScreen> {
                         const SizedBox(height: 8),
                         const Text('Método de pago', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: SatoriColors.textDark)),
                         const SizedBox(height: 10),
-                        Wrap(spacing: 8, children: _payMethods.map((m) {
+                        Wrap(spacing: 8, runSpacing: 8, children: _payMethods.map((m) {
                           final active = _payMethod == m;
-                          return GestureDetector(
+                          return SatoriBounce(
                             onTap: () => setState(() => _payMethod = m),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 14),
+                              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
                               decoration: BoxDecoration(
                                 color: active ? SatoriColors.pinkPrimary : SatoriColors.white,
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(color: active ? SatoriColors.pinkDeep : SatoriColors.pinkLight, width: 1.5),
+                                boxShadow: [if(!active) BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 4, offset: const Offset(0, 2))],
                               ),
-                              child: Text(m, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: active ? SatoriColors.white : SatoriColors.textMid)),
+                              child: Text(m, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: active ? SatoriColors.white : SatoriColors.textMid)),
                             ),
                           );
                         }).toList()),
@@ -348,15 +401,20 @@ class _VentaScreenState extends State<VentaScreen> {
             child: Container(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               color: SatoriColors.pinkPale,
-              child: ElevatedButton(
-                onPressed: _cobrar,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: SatoriColors.pinkPrimary, foregroundColor: SatoriColors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  elevation: 6, shadowColor: SatoriColors.pinkDeep,
+              child: SatoriBounce(
+                onTap: _cobrar,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  decoration: BoxDecoration(
+                    color: SatoriColors.teal,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [BoxShadow(color: SatoriColors.tealDark.withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 4))],
+                  ),
+                  child: Center(
+                    child: Text('Cobrar \$$_subtotal', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 1.0, color: Colors.white)),
+                  ),
                 ),
-                child: Text('Cobrar \$$_subtotal', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
               ),
             ),
           ),
@@ -386,11 +444,16 @@ class _CircleBtn extends StatelessWidget {
   const _CircleBtn({required this.icon, required this.color, required this.onTap});
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
+  Widget build(BuildContext context) => SatoriBounce(
     onTap: onTap,
     child: Container(
       width: 38, height: 38,
-      decoration: BoxDecoration(color: SatoriColors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 6)]),
+      decoration: BoxDecoration(
+        color: Colors.transparent, 
+        shape: BoxShape.circle,
+        border: Border.all(color: SatoriColors.pinkLight.withAlpha(80), width: 1),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 4)],
+      ),
       child: Center(child: Text(icon, style: TextStyle(fontSize: 22, color: color, fontWeight: FontWeight.w700))),
     ),
   );
@@ -403,13 +466,19 @@ class _CounterBtn extends StatelessWidget {
   const _CounterBtn({required this.label, required this.onTap, required this.active});
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
+  Widget build(BuildContext context) => SatoriBounce(
     onTap: onTap,
     child: Container(
-      width: 28, height: 28,
+      width: 34, height: 34,
       decoration: BoxDecoration(
         color: active ? SatoriColors.teal : SatoriColors.pinkLight,
         shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: (active ? SatoriColors.teal : SatoriColors.pinkDeep).withAlpha(40),
+            blurRadius: 4, offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Center(child: Text(label, style: TextStyle(fontSize: 18, color: active ? SatoriColors.white : SatoriColors.pinkDeep, fontWeight: FontWeight.w700))),
     ),

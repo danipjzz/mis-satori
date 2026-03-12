@@ -1,8 +1,10 @@
-// lib/screens/prediccion_screen.dart
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../theme/colors.dart';
+import '../widgets/bounce.dart';
 
 // ─── DATOS ────────────────────────────────────────────────────────────────────
 const _ventasSemana = [
@@ -26,7 +28,7 @@ const _topProductos = [
 const _alertas = [
   {'tipo': 'warning', 'msg': 'Sábado: demanda estimada +35% vs semana pasada', 'emoji': '⚡'},
   {'tipo': 'info',    'msg': 'Temporada alta: 15 Jun – 10 Jul (vacaciones)',   'emoji': '📅'},
-  {'tipo': 'success', 'msg': 'Meta semanal: 82% alcanzada, ¡vas muy bien!',   'emoji': '🎯'},
+  {'tipo': 'success', 'msg': 'Meta semanal alcazanda al 82%, ¡excelente ritmo!', 'emoji': '🎯'},
 ];
 
 const _proyeccion = [
@@ -59,45 +61,74 @@ class _PrediccionScreenState extends State<PrediccionScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Header
+            // Header Premium
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               child: Row(
                 children: [
-                  GestureDetector(
+                  SatoriBounce(
                     onTap: () => context.go('/'),
                     child: Container(
-                      width: 38, height: 38,
-                      decoration: BoxDecoration(color: SatoriColors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 6)]),
-                      child: const Center(child: Text('‹', style: TextStyle(fontSize: 22, color: Color(0xFFB8860B), fontWeight: FontWeight.w700))),
+                      width: 42, height: 42,
+                      decoration: BoxDecoration(
+                        color: Colors.white, shape: BoxShape.circle,
+                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10, offset: const Offset(0, 4))],
+                      ),
+                      child: const Center(child: Text('‹', style: TextStyle(fontSize: 26, color: Color(0xFFB8860B), fontWeight: FontWeight.w500))),
                     ),
                   ),
-                  const Expanded(child: Center(child: Text('📈 Predicción', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: SatoriColors.textDark)))),
-                  const SizedBox(width: 38),
+                  Expanded(
+                    child: Center(
+                      child: ShaderMask(
+                        shaderCallback: (b) => const LinearGradient(
+                          colors: [Color(0xFFB8860B), SatoriColors.pinkDeep],
+                        ).createShader(b),
+                        child: Text(
+                          'Predicción',
+                          style: GoogleFonts.cormorantGaramond(
+                                fontSize: 32, fontWeight: FontWeight.w900,
+                                fontStyle: FontStyle.italic, color: Colors.white,
+                                letterSpacing: -1.0,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 42),
                 ],
               ),
             ),
-
             Expanded(
               child: SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Selector período
                     Container(
-                      decoration: BoxDecoration(color: SatoriColors.white, borderRadius: BorderRadius.circular(14)),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                      ),
                       padding: const EdgeInsets.all(4),
                       child: Row(
                         children: ['Semana', 'Mes', '3 Meses'].map((p) {
                           final active = _periodo == p;
                           return Expanded(
-                            child: GestureDetector(
+                            child: SatoriBounce(
                               onTap: () => setState(() => _periodo = p),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 9),
-                                decoration: BoxDecoration(color: active ? SatoriColors.yellow : Colors.transparent, borderRadius: BorderRadius.circular(10)),
-                                child: Center(child: Text(p, style: TextStyle(fontSize: 13, fontWeight: active ? FontWeight.w800 : FontWeight.w600, color: active ? SatoriColors.textDark : SatoriColors.textMid))),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: active ? Colors.white : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: active ? [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))] : [],
+                                ),
+                                child: Center(
+                                  child: Text(p, style: TextStyle(fontSize: 14, fontWeight: active ? FontWeight.w800 : FontWeight.w600, color: active ? SatoriColors.textDark : SatoriColors.textMid)),
+                                ),
                               ),
                             ),
                           );
@@ -105,202 +136,245 @@ class _PrediccionScreenState extends State<PrediccionScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
 
                     // KPI Cards
                     Row(
                       children: [
-                        _KpiCard('💰', '\$${_totalReal.toInt()}', 'Ventas reales', SatoriColors.tealPale, SatoriColors.tealLight),
-                        const SizedBox(width: 10),
-                        _KpiCard('🔮', '\$${_totalPred.toInt()}', 'Predicción',   SatoriColors.pinkPale, SatoriColors.pinkLight),
-                        const SizedBox(width: 10),
-                        _KpiCard('🎯', '$_accuracy%',             'Precisión',    SatoriColors.yellowLight, const Color(0xFFFFE099)),
+                        _KpiCard('💰', '\$${_totalReal.toInt()}', 'Ventas reales', Colors.white, SatoriColors.teal),
+                        const SizedBox(width: 12),
+                        _KpiCard('🔮', '\$${_totalPred.toInt()}', 'Predicción', Colors.white, SatoriColors.pinkPrimary),
+                        const SizedBox(width: 12),
+                        _KpiCard('🎯', '$_accuracy%', 'Precisión', Colors.white, const Color(0xFFB8860B)),
                       ],
                     ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
 
                     // Gráfica
                     Container(
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(color: SatoriColors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 10)]),
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.9),
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15)],
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text('Ventas por día', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: SatoriColors.textDark)),
-                              Row(children: [
-                                _Legend(SatoriColors.teal, 'Real'),
-                                const SizedBox(width: 12),
-                                _Legend(SatoriColors.tealLight, 'Predicción'),
-                              ]),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          SizedBox(
-                            height: 160,
-                            child: BarChart(
-                              BarChartData(
-                                maxY: 3500,
-                                gridData: FlGridData(
-                                  show: true,
-                                  drawVerticalLine: false,
-                                  horizontalInterval: 1000,
-                                  getDrawingHorizontalLine: (_) => FlLine(color: SatoriColors.pinkPale, strokeWidth: 1),
-                                ),
-                                borderData: FlBorderData(show: false),
-                                titlesData: FlTitlesData(
-                                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                  bottomTitles: AxisTitles(
-                                    sideTitles: SideTitles(
-                                      showTitles: true,
-                                      getTitlesWidget: (val, _) {
-                                        final i = val.toInt();
-                                        if (i < 0 || i >= _ventasSemana.length) return const SizedBox();
-                                        final isFuture = _ventasSemana[i]['futuro'] == true;
-                                        return Text(
-                                          _ventasSemana[i]['dia'] as String,
-                                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: isFuture ? SatoriColors.teal : SatoriColors.textMid),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                ),
-                                barGroups: List.generate(_ventasSemana.length, (i) {
-                                  final d = _ventasSemana[i];
-                                  final isFuture = d['futuro'] == true;
-                                  return BarChartGroupData(
-                                    x: i,
-                                    barRods: [
-                                      BarChartRodData(toY: d['pred'] as double, color: SatoriColors.tealLight, width: 12, borderRadius: BorderRadius.circular(4)),
-                                      if (!isFuture)
-                                        BarChartRodData(toY: d['real'] as double, color: SatoriColors.teal, width: 12, borderRadius: BorderRadius.circular(4)),
-                                    ],
-                                    barsSpace: 4,
-                                  );
-                                }),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text('Ingresos semanales', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: SatoriColors.textDark, letterSpacing: -0.3)),
+                                  Row(children: [
+                                    _Legend(SatoriColors.pinkPrimary, 'Real'),
+                                    const SizedBox(width: 12),
+                                    _Legend(SatoriColors.pinkLight, 'Pred.'),
+                                  ]),
+                                ],
                               ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          const Center(child: Text('📌 Domingo: estimado con modelo de tendencia', style: TextStyle(fontSize: 11, color: SatoriColors.textLight))),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Top productos
-                    const Text('🏆 Top productos de la semana', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: SatoriColors.textDark)),
-                    const SizedBox(height: 12),
-                    Container(
-                      decoration: BoxDecoration(color: SatoriColors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.07), blurRadius: 10)]),
-                      child: Column(
-                        children: List.generate(_topProductos.length, (i) {
-                          final p = _topProductos[i];
-                          final upVal = p['up'];
-                          final tendColor = upVal == true ? SatoriColors.greenDark : upVal == false ? SatoriColors.pinkDeep : SatoriColors.textMid;
-                          final tendEmoji = upVal == true ? '↑' : upVal == false ? '↓' : '→';
-                          return Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(border: Border(bottom: BorderSide(color: i < _topProductos.length - 1 ? SatoriColors.pinkPale : Colors.transparent))),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 24, height: 24,
-                                  decoration: const BoxDecoration(color: SatoriColors.pinkLight, shape: BoxShape.circle),
-                                  child: Center(child: Text('${i+1}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: SatoriColors.pinkDeep))),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(p['emoji'] as String, style: const TextStyle(fontSize: 24)),
-                                const SizedBox(width: 10),
-                                Expanded(child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(children: [
-                                      Expanded(child: Text(p['nombre'] as String, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: SatoriColors.textDark))),
-                                      Text(tendEmoji, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: tendColor)),
-                                    ]),
-                                    Text('${p['ventas']} uds · \$${(p['monto'] as int).toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => ',')}',
-                                        style: const TextStyle(fontSize: 11, color: SatoriColors.textMid)),
-                                    const SizedBox(height: 6),
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(3),
-                                      child: LinearProgressIndicator(
-                                        value: p['pct'] as double,
-                                        backgroundColor: SatoriColors.pinkPale,
-                                        valueColor: AlwaysStoppedAnimation(i == 0 ? SatoriColors.teal : SatoriColors.pinkPrimary),
-                                        minHeight: 5,
+                              const SizedBox(height: 24),
+                              SizedBox(
+                                height: 180,
+                                child: BarChart(
+                                  BarChartData(
+                                    maxY: 3600,
+                                    gridData: FlGridData(
+                                      show: true,
+                                      drawVerticalLine: false,
+                                      horizontalInterval: 1200,
+                                      getDrawingHorizontalLine: (_) => FlLine(color: SatoriColors.pinkPale, strokeWidth: 1.5, dashArray: [4, 4]),
+                                    ),
+                                    borderData: FlBorderData(show: false),
+                                    titlesData: FlTitlesData(
+                                      leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                      bottomTitles: AxisTitles(
+                                        sideTitles: SideTitles(
+                                          showTitles: true,
+                                          getTitlesWidget: (val, _) {
+                                            final i = val.toInt();
+                                            if (i < 0 || i >= _ventasSemana.length) return const SizedBox();
+                                            final isFuture = _ventasSemana[i]['futuro'] == true;
+                                            return Padding(
+                                              padding: const EdgeInsets.only(top: 8),
+                                              child: Text(
+                                                _ventasSemana[i]['dia'] as String,
+                                                style: TextStyle(fontSize: 11, fontWeight: isFuture ? FontWeight.w800 : FontWeight.w600, color: isFuture ? SatoriColors.pinkPrimary : SatoriColors.textMid),
+                                              ),
+                                            );
+                                          },
+                                        ),
                                       ),
                                     ),
-                                  ],
-                                )),
-                              ],
-                            ),
-                          );
-                        }),
-                      ),
-                    ),
+                                    barGroups: List.generate(_ventasSemana.length, (i) {
+                                      final d = _ventasSemana[i];
+                                      final isFuture = d['futuro'] == true;
+                                      return BarChartGroupData(
+                                        x: i,
+                                        barRods: [
+                                          // Background track for projection
+                                          BarChartRodData(
+                                            toY: 3500,
+                                            color: isFuture ? SatoriColors.pinkPale.withOpacity(0.3) : Colors.transparent,
+                                            width: 14,
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                        ],
+                                        showingTooltipIndicators: [],
+                                      );
+                                    }).map((bg) {
+                                      final i = bg.x;
+                                      final d = _ventasSemana[i];
+                                      final isFuture = d['futuro'] == true;
+                                      return BarChartGroupData(
+                                        x: i,
+                                        barsSpace: 4,
+                                        barRods: [
+                                          BarChartRodData(toY: d['pred'] as double, color: SatoriColors.pinkLight, width: 6, borderRadius: BorderRadius.circular(10)),
+                                          if (!isFuture)
+                                            BarChartRodData(toY: d['real'] as double, color: SatoriColors.pinkPrimary, width: 6, borderRadius: BorderRadius.circular(10)),
+                                        ],
+                                      );
+                                    }).toList(),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    const SizedBox(height: 24),
 
-                    const SizedBox(height: 20),
+                    // Top productos
+                    const Text('Top Semanal', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: SatoriColors.textDark, letterSpacing: -0.4)),
+                    const SizedBox(height: 14),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.9),
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15)],
+                      ),
+                      child: Column(
+                        children: List.generate(_topProductos.length, (i) {
+                              final p = _topProductos[i];
+                              final upVal = p['up'];
+                              final tendColor = upVal == true ? SatoriColors.teal : upVal == false ? SatoriColors.pinkDeep : SatoriColors.textMid;
+                              final tendEmoji = upVal == true ? '↗' : upVal == false ? '↘' : '→';
+                              return Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                                decoration: BoxDecoration(border: Border(bottom: BorderSide(color: i < _topProductos.length - 1 ? SatoriColors.pinkPale : Colors.transparent, width: 0.5))),
+                                child: Row(
+                                  children: [
+                                    Text('${i+1}', style: GoogleFonts.cormorantGaramond(fontSize: 18, fontWeight: FontWeight.w700, fontStyle: FontStyle.italic, color: SatoriColors.pinkPrimary)),
+                                    const SizedBox(width: 14),
+                                    Text(p['emoji'] as String, style: const TextStyle(fontSize: 24)),
+                                    const SizedBox(width: 16),
+                                    Expanded(child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(children: [
+                                          Expanded(child: Text(p['nombre'] as String, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: SatoriColors.textDark))),
+                                          Text(tendEmoji, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: tendColor)),
+                                        ]),
+                                        const SizedBox(height: 2),
+                                        Text('${p['ventas']} uds · \$${(p['monto'] as int).toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => ',')}',
+                                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: SatoriColors.textMid)),
+                                        const SizedBox(height: 8),
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(4),
+                                          child: LinearProgressIndicator(
+                                            value: p['pct'] as double,
+                                            backgroundColor: SatoriColors.pinkPale.withOpacity(0.5),
+                                            valueColor: AlwaysStoppedAnimation(i == 0 ? SatoriColors.tealLight : SatoriColors.pinkPrimary.withOpacity(0.6)),
+                                            minHeight: 4,
+                                          ),
+                                        ),
+                                      ],
+                                    )),
+                                  ],
+                                ),
+                              );
+                            }),
+                          ),
+                        ),
+
+                    const SizedBox(height: 24),
 
                     // Proyección
                     Container(
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(color: SatoriColors.tealPale, borderRadius: BorderRadius.circular(20), border: Border.all(color: SatoriColors.tealLight, width: 1.5)),
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: SatoriColors.tealPale.withOpacity(0.4), borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: SatoriColors.tealLight.withOpacity(0.3), width: 1.5),
+                        boxShadow: [BoxShadow(color: SatoriColors.teal.withOpacity(0.04), blurRadius: 16, offset: const Offset(0, 4))],
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('🔮 Proyección próxima semana', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: SatoriColors.tealDark)),
-                          const SizedBox(height: 14),
+                          const Text('Proyección próxima semana', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: SatoriColors.tealDark, letterSpacing: -0.2)),
+                          const SizedBox(height: 16),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: _proyeccion.map((d) => Column(children: [
-                              Text(d['dia'] as String, style: const TextStyle(fontSize: 11, color: SatoriColors.textMid)),
-                              const SizedBox(height: 4),
-                              Text('\$${((d['est'] as int) / 1000).toStringAsFixed(1)}k', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: SatoriColors.tealDark)),
+                              Text(d['dia'] as String, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: SatoriColors.teal)),
+                              const SizedBox(height: 6),
+                              Text('\$${((d['est'] as int) / 1000).toStringAsFixed(1)}k', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: SatoriColors.tealDark)),
                             ])).toList(),
                           ),
-                          const SizedBox(height: 12),
-                          const Divider(color: SatoriColors.tealLight),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 16),
+                          Divider(color: SatoriColors.tealLight.withOpacity(0.5)),
+                          const SizedBox(height: 8),
                           Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                            const Text('Total estimado: ', style: TextStyle(fontSize: 14, color: SatoriColors.textMid)),
-                            const Text('\$13,850', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: SatoriColors.tealDark)),
+                            const Text('Cierre estimado al domingo: ', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: SatoriColors.tealDark)),
+                            const Text('\$13,850', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: SatoriColors.tealDark)),
                           ]),
                         ],
                       ),
                     ),
 
-                    const SizedBox(height: 20),
-                    const Text('⚡ Alertas y recomendaciones', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: SatoriColors.textDark)),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 24),
 
+                    // Alertas minimalistas
+                    const Text('Inteligencia', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: SatoriColors.textDark, letterSpacing: -0.4)),
+                    const SizedBox(height: 12),
                     ..._alertas.map((a) {
-                      Color bg, border;
-                      switch (a['tipo']) {
-                        case 'warning': bg = SatoriColors.yellowLight; border = SatoriColors.yellow; break;
-                        case 'success': bg = const Color(0xFFE8F8E8);  border = SatoriColors.green; break;
-                        default:        bg = SatoriColors.tealPale;    border = SatoriColors.tealLight;
-                      }
                       return Container(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(14), border: Border.all(color: border, width: 1.5)),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white, borderRadius: BorderRadius.circular(16),
+                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
+                        ),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(a['emoji'] as String, style: const TextStyle(fontSize: 20)),
-                            const SizedBox(width: 10),
-                            Expanded(child: Text(a['msg'] as String, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: SatoriColors.textDark, height: 1.4))),
+                            const SizedBox(width: 12),
+                            Expanded(child: Text(a['msg'] as String, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: SatoriColors.textDark, height: 1.4))),
                           ],
                         ),
                       );
                     }),
+                    
+                    const SizedBox(height: 12),
+                    
+                    // Call to Action
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {},
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFB8860B),
+                          foregroundColor: Colors.white,
+                          elevation: 6,
+                          shadowColor: const Color(0xFFB8860B).withAlpha(100),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          padding: const EdgeInsets.symmetric(vertical: 20),
+                        ),
+                        child: const Text('Exportar Reporte Mensual', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 0.5)),
+                      ),
+                    ),
 
                     const SizedBox(height: 30),
                   ],
@@ -316,21 +390,36 @@ class _PrediccionScreenState extends State<PrediccionScreen> {
 
 class _KpiCard extends StatelessWidget {
   final String emoji, value, label;
-  final Color bg, border;
-  const _KpiCard(this.emoji, this.value, this.label, this.bg, this.border);
+  final Color bg, accent;
+  const _KpiCard(this.emoji, this.value, this.label, this.bg, this.accent);
 
   @override
   Widget build(BuildContext context) => Expanded(
     child: Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(16), border: Border.all(color: border, width: 1.5)),
-      child: Column(children: [
-        Text(emoji, style: const TextStyle(fontSize: 22)),
-        const SizedBox(height: 4),
-        Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: SatoriColors.textDark), textAlign: TextAlign.center),
-        const SizedBox(height: 2),
-        Text(label, style: const TextStyle(fontSize: 10, color: SatoriColors.textMid), textAlign: TextAlign.center),
-      ]),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withOpacity(0.12),
+            blurRadius: 16, offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+          child: Column(children: [
+            Text(emoji, style: const TextStyle(fontSize: 26)),
+            const SizedBox(height: 8),
+            Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: SatoriColors.textDark), textAlign: TextAlign.center),
+            const SizedBox(height: 4),
+            Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: SatoriColors.textMid), textAlign: TextAlign.center),
+          ]),
+        ),
+      ),
     ),
   );
 }
@@ -342,8 +431,9 @@ class _Legend extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(children: [
-    Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-    const SizedBox(width: 5),
-    Text(label, style: const TextStyle(fontSize: 11, color: SatoriColors.textMid)),
+    Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+    const SizedBox(width: 6),
+    Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: SatoriColors.textMid)),
   ]);
 }
+

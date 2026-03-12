@@ -14,12 +14,31 @@ void main() {
 final _router = GoRouter(
   initialLocation: '/',
   routes: [
-    GoRoute(path: '/',          builder: (_, __) => const WelcomeScreen()),
-    GoRoute(path: '/pedidos',   builder: (_, __) => const PedidosScreen()),
-    GoRoute(path: '/venta',     builder: (_, __) => const VentaScreen()),
-    GoRoute(path: '/prediccion',builder: (_, __) => const PrediccionScreen()),
+    GoRoute(path: '/',           pageBuilder: (context, state) => _premiumTransition(const WelcomeScreen(), state)),
+    GoRoute(path: '/pedidos',    pageBuilder: (context, state) => _premiumTransition(const PedidosScreen(), state)),
+    GoRoute(path: '/venta',      pageBuilder: (context, state) => _premiumTransition(const VentaScreen(), state)),
+    GoRoute(path: '/prediccion', pageBuilder: (context, state) => _premiumTransition(const PrediccionScreen(), state)),
   ],
 );
+
+CustomTransitionPage _premiumTransition(Widget child, GoRouterState state) {
+  return CustomTransitionPage(
+    key: state.pageKey,
+    child: child,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(
+        opacity: CurveTween(curve: Curves.easeInOut).animate(animation),
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.98, end: 1.0).animate(
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+          ),
+          child: child,
+        ),
+      );
+    },
+    transitionDuration: const Duration(milliseconds: 400),
+  );
+}
 
 class SatoriApp extends StatelessWidget {
   const SatoriApp({super.key});
