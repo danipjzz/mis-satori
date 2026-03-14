@@ -49,12 +49,12 @@ class _PedidosScreenState extends State<PedidosScreen> {
 
       final pedido = Pedido(
         id: p["id"].toString(),
-        cliente: p["cliente"] ?? "Cliente",
+        cliente: p["nombre"] ?? "Cliente",
         producto: p["tipo_torta"] ?? "Postre",
         hora: p["hora_entrega"] ?? "",
         estado: p["estado"] ?? "pendiente",
         monto: "\$0",
-        nota: p["nota"] ?? "",
+        nota: p["telefono"] ?? "",
       );
 
       if (!pedidosMap.containsKey(day)) {
