@@ -7,12 +7,29 @@ app.use(express.json());
 
 const pedidosRoutes = require('./src/routes/pedidos');
 const clientesRoutes = require('./src/routes/clientes');
+const ventasRoutes = require('./src/routes/ventas');
 
 app.use('/pedidos', pedidosRoutes);
 app.use('/clientes', clientesRoutes);
+app.use('/ventas', ventasRoutes);
 
 app.get('/', (req, res) => {
   res.send('API MIS Satori funcionando');
+});
+
+app.get("/pedidos", async (req, res) => {
+  try {
+
+    const result = await pool.query(
+      "SELECT * FROM pedidos ORDER BY fecha DESC"
+    );
+
+    res.json(result.rows);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({error: "Error obteniendo pedidos"});
+  }
 });
 
 const PORT = process.env.PORT || 3000;
