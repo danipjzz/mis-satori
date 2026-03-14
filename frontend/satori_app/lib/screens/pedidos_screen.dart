@@ -6,6 +6,7 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/colors.dart';
 import '../widgets/bounce.dart';
+import '../services/api_service.dart';
 
 // ─── MODELOS ─────────────────────────────────────────────────────────────────
 class Pedido {
@@ -14,21 +15,6 @@ class Pedido {
     required this.hora, required this.estado, required this.monto, this.nota = ''});
 }
 
-// Initial data
-final Map<DateTime, List<Pedido>> _initialPedidos = {
-  DateTime(2025, 6, 7): [
-    const Pedido(id:'1', cliente:'María López',  producto:'Pastel 3 pisos',  hora:'10:00 AM', estado:'pendiente', monto:'\$450',  nota:'Flores rosas, mensaje "Feliz Cumple"'),
-    const Pedido(id:'2', cliente:'Juan García',  producto:'Cupcakes x12',    hora:'01:00 PM', estado:'listo',     monto:'\$180',  nota:'Sabor vainilla con betún azul'),
-    const Pedido(id:'3', cliente:'Ana Ramos',    producto:'Pay de queso',    hora:'04:00 PM', estado:'pendiente', monto:'\$220'),
-  ],
-  DateTime(2025, 6, 8): [
-    const Pedido(id:'4', cliente:'Pedro Ríos',   producto:'Pastel Chocolate',hora:'11:00 AM', estado:'pendiente', monto:'\$380',  nota:'Sin nueces'),
-    const Pedido(id:'5', cliente:'Laura Torres', producto:'Galletas x24',    hora:'03:00 PM', estado:'entregado', monto:'\$150',  nota:'Figuras de animales'),
-  ],
-  DateTime(2025, 6, 12): [
-    const Pedido(id:'6', cliente:'Carlos Vega',  producto:'Pastel Quince',   hora:'10:00 AM', estado:'pendiente', monto:'\$1,200', nota:'5 pisos, temática rosa gold'),
-  ],
-};
 
 DateTime _dayKey(DateTime d) => DateTime(d.year, d.month, d.day);
 
@@ -49,6 +35,43 @@ class PedidosScreen extends StatefulWidget {
 }
 
 class _PedidosScreenState extends State<PedidosScreen> {
+  Future<void> _cargarPedidos() async {
+  try {
+
+    final data = await ApiService.getPedidos();
+
+    final Map<DateTime, List<Pedido>> pedidosMap = {};
+
+    for (var p in data) {
+
+      final fecha = DateTime.parse(p["fecha_entrega"]);
+      final day = DateTime(fecha.year, fecha.month, fecha.day);
+
+      final pedido = Pedido(
+        id: p["id"].toString(),
+        cliente: p["cliente"] ?? "Cliente",
+        producto: p["tipo_torta"] ?? "Postre",
+        hora: p["hora_entrega"] ?? "",
+        estado: p["estado"] ?? "pendiente",
+        monto: "\$0",
+        nota: p["nota"] ?? "",
+      );
+
+      if (!pedidosMap.containsKey(day)) {
+        pedidosMap[day] = [];
+      }
+
+      pedidosMap[day]!.add(pedido);
+    }
+
+    setState(() {
+      _pedidos = pedidosMap;
+    });
+
+  } catch (e) {
+    print("Error cargando pedidos: $e");
+  }
+}
   DateTime _focused = DateTime.now();
   DateTime _selected = _dayKey(DateTime.now());
   Pedido? _modalPedido;
@@ -58,9 +81,11 @@ class _PedidosScreenState extends State<PedidosScreen> {
   @override
   void initState() {
     super.initState();
-    _pedidos = Map.from(_initialPedidos);
-  }
-
+    _pedidos = {};
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _cargarPedidos();
+  });
+}
   List<Pedido> get _pedidosDelDia => _pedidos[_dayKey(_selected)] ?? [];
 
   int get _totalDia => _pedidosDelDia.fold(0, (acc, p) {

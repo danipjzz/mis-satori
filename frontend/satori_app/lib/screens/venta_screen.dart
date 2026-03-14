@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/colors.dart';
 import '../widgets/bounce.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 // ─── MODELOS ─────────────────────────────────────────────────────────────────
 class Producto {
@@ -24,24 +26,23 @@ const _categorias = [
 ];
 
 const _productos = [
-  Producto(id:'p1', cat:'pasteles', nombre:'Pastel Vainilla',    desc:'1 kg, personalizable',  emoji:'🍰', precio:380),
-  Producto(id:'p2', cat:'pasteles', nombre:'Pastel Chocolate',   desc:'1 kg, betún oscuro',     emoji:'🎂', precio:400),
-  Producto(id:'p3', cat:'pasteles', nombre:'Pastel Red Velvet',  desc:'1 kg, relleno queso',    emoji:'❤️', precio:420),
-  Producto(id:'p4', cat:'pasteles', nombre:'Tres Leches',        desc:'1 kg, crema chantilly',  emoji:'🥛', precio:360),
-  Producto(id:'p5', cat:'pasteles', nombre:'Pastel Zanahoria',   desc:'1 kg, nuez y crema',     emoji:'🥕', precio:390),
-  Producto(id:'c1', cat:'cupcakes', nombre:'Cupcake Vainilla',   desc:'Con betún decorado',     emoji:'🧁', precio:35),
-  Producto(id:'c2', cat:'cupcakes', nombre:'Cupcake Choco',      desc:'Relleno de ganache',     emoji:'🍫', precio:38),
-  Producto(id:'c3', cat:'cupcakes', nombre:'Cupcake Fresa',      desc:'Con fresas frescas',     emoji:'🍓', precio:40),
-  Producto(id:'c4', cat:'cupcakes', nombre:'Cupcake Limón',      desc:'Betún de merengue',      emoji:'🍋', precio:36),
-  Producto(id:'g1', cat:'galletas', nombre:'Galleta Chispas',    desc:'Chips de chocolate',     emoji:'🍪', precio:22),
-  Producto(id:'g2', cat:'galletas', nombre:'Galleta Decorada',   desc:'Con glasé artístico',    emoji:'🌸', precio:35),
-  Producto(id:'g3', cat:'galletas', nombre:'Caja Galletas x12', desc:'Mix de sabores',         emoji:'📦', precio:280),
-  Producto(id:'py1',cat:'pays',     nombre:'Pay Queso',          desc:'Con frutos rojos',       emoji:'🧀', precio:250),
-  Producto(id:'py2',cat:'pays',     nombre:'Pay Manzana',        desc:'Con canela',             emoji:'🍎', precio:230),
-  Producto(id:'py3',cat:'pays',     nombre:'Pay Limón',          desc:'Merengue italiano',      emoji:'🍋', precio:220),
-  Producto(id:'b1', cat:'bebidas',  nombre:'Café Latte',         desc:'Leche espumada',         emoji:'☕', precio:55),
-  Producto(id:'b2', cat:'bebidas',  nombre:'Chocolate Caliente', desc:'Con marshmallows',       emoji:'🍫', precio:50),
-  Producto(id:'b3', cat:'bebidas',  nombre:'Frappé Vainilla',    desc:'Con crema batida',       emoji:'🥤', precio:65),
+  Producto(id:'p1', cat:'postres', nombre:'Pie de limón', desc:'', emoji:'🥧', precio:0),
+  Producto(id:'p2', cat:'postres', nombre:'Pie de parchita', desc:'', emoji:'🥧', precio:0),
+  Producto(id:'p3', cat:'postres', nombre:'Matilda', desc:'', emoji:'🍫', precio:0),
+  Producto(id:'p4', cat:'postres', nombre:'Marquesa', desc:'', emoji:'🍰', precio:0),
+  Producto(id:'p5', cat:'postres', nombre:'Torta de zanahoria', desc:'', emoji:'🥕', precio:0),
+  Producto(id:'p6', cat:'postres', nombre:'Quesillo', desc:'', emoji:'🍮', precio:0),
+  Producto(id:'p7', cat:'postres', nombre:'Beso de ángel', desc:'', emoji:'😇', precio:0),
+  Producto(id:'p8', cat:'postres', nombre:'Brigadeiro', desc:'', emoji:'🍫', precio:0),
+  Producto(id:'p9', cat:'postres', nombre:'Cuchareable de pistacho', desc:'', emoji:'🥄', precio:0),
+  Producto(id:'p10', cat:'postres', nombre:'Cuchareable de samba', desc:'', emoji:'🥄', precio:0),
+  Producto(id:'p11', cat:'postres', nombre:'Tres leches', desc:'', emoji:'🥛', precio:0),
+  Producto(id:'p12', cat:'postres', nombre:'Tres leches de chocolate', desc:'', emoji:'🍫', precio:0),
+  Producto(id:'p13', cat:'postres', nombre:'Cheesecake de fresa', desc:'', emoji:'🍓', precio:0),
+  Producto(id:'p14', cat:'postres', nombre:'Tres leches de frutas', desc:'', emoji:'🍓', precio:0),
+  Producto(id:'p15', cat:'postres', nombre:'Torta de auyama', desc:'', emoji:'🎃', precio:0),
+  Producto(id:'p16', cat:'postres', nombre:'Brocookies', desc:'', emoji:'🍪', precio:0),
+  Producto(id:'p17', cat:'postres', nombre:'Otro', desc:'Ingresar manualmente', emoji:'✏️', precio:0),
 ];
 
 const _payMethods = ['💵 Efectivo', '💳 Tarjeta', '📱 Transferencia'];
@@ -53,9 +54,29 @@ class VentaScreen extends StatefulWidget {
   State<VentaScreen> createState() => _VentaScreenState();
 }
 
+
 class _VentaScreenState extends State<VentaScreen> {
+  Future<void> registrarVenta(
+  String producto,
+  int cantidad,
+  int precio,
+) async {
+
+  final url = Uri.parse("https://mis-satori.onrender.com/ventas");
+
+  await http.post(
+    url,
+    headers: {"Content-Type": "application/json"},
+    body: jsonEncode({
+      "producto": producto,
+      "cantidad": cantidad,
+      "precio_unitario": precio
+    }),
+  );
+} 
   String _catActiva = 'all';
   final Map<String, int> _carrito = {};
+  final Map<String, int> _preciosManual = {};
   bool _showCarrito = false;
   String? _payMethod;
   bool _showSuccess = false;
@@ -75,18 +96,35 @@ class _VentaScreenState extends State<VentaScreen> {
     if (q <= 0) _carrito.remove(id); else _carrito[id] = q;
   });
 
-  void _cobrar() {
-    if (_payMethod == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Selecciona método de pago')));
-      return;
-    }
-    setState(() => _showSuccess = true);
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) setState(() {
-        _carrito.clear(); _payMethod = null; _showSuccess = false; _showCarrito = false;
-      });
-    });
+  void _cobrar() async {
+
+  if (_payMethod == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Selecciona método de pago'))
+    );
+    return;
   }
+
+  for (var item in _itemsCarrito) {
+
+    final producto = item.$1.nombre;
+    final cantidad = item.$2;
+    final precio = item.$1.precio;
+
+    await registrarVenta(producto, cantidad, precio);
+  }
+
+  setState(() => _showSuccess = true);
+
+  Future.delayed(const Duration(seconds: 2), () {
+    if (mounted) setState(() {
+      _carrito.clear();
+      _payMethod = null;
+      _showSuccess = false;
+      _showCarrito = false;
+    });
+  });
+}
 
   @override
   Widget build(BuildContext context) {
@@ -234,7 +272,44 @@ class _VentaScreenState extends State<VentaScreen> {
                                 SizedBox(
                                   width: double.infinity,
                                   child: SatoriBounce(
-                                    onTap: () => _add(p.id),
+                                    onTap: () async {
+
+                                        final controller = TextEditingController();
+
+                                        final precio = await showDialog<int>(
+                                          context: context,
+                                          builder: (_) => AlertDialog(
+                                            title: Text("Precio de ${p.nombre}"),
+                                            content: TextField(
+                                              controller: controller,
+                                              keyboardType: TextInputType.number,
+                                              decoration: const InputDecoration(
+                                                hintText: "Ingresa el precio",
+                                              ),
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(context),
+                                                child: const Text("Cancelar"),
+                                              ),
+                                              ElevatedButton(
+                                                onPressed: () {
+                                                  final value = int.tryParse(controller.text);
+                                                  Navigator.pop(context, value);
+                                                },
+                                                child: const Text("Aceptar"),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+
+                                        if (precio != null) {
+                                          setState(() {
+                                            _preciosManual[p.id] = precio;
+                                            _add(p.id);
+                                          });
+                                        }
+                                      },
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(vertical: 10),
                                       decoration: BoxDecoration(
