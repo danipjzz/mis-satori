@@ -21,10 +21,18 @@ app.get('/', (req, res) => {
 app.get("/pedidos", async (req, res) => {
   try {
 
-    const result = await pool.query(
-      "SELECT * FROM pedidos ORDER BY fecha DESC"
-    );
-
+    const result = await pool.query(`
+      SELECT 
+        id,
+        cliente_id,
+        fecha_entrega,
+        hora_entrega,
+        tipo_pedido,
+        tipo_torta,
+        estado
+      FROM pedidos
+      ORDER BY fecha_entrega ASC
+    `);
     res.json(result.rows);
 
   } catch (err) {
