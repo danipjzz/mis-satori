@@ -29,6 +29,7 @@ exports.crearPedido = async (req, res) => {
   const {
     nombre,
     telefono,
+    correo,
     fecha_registro,
     fecha_entrega,
     hora_entrega,
