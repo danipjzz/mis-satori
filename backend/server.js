@@ -23,21 +23,24 @@ app.get("/pedidos", async (req, res) => {
 
     const result = await pool.query(`
       SELECT 
-        id,
-        cliente_id,
-        fecha_entrega,
-        hora_entrega,
-        tipo_pedido,
-        tipo_torta,
-        estado
+        pedidos.id,
+        clientes.nombre,
+        clientes.telefono,
+        pedidos.fecha_entrega,
+        pedidos.hora_entrega,
+        pedidos.tipo_torta,
+        pedidos.estado
       FROM pedidos
-      ORDER BY fecha_entrega ASC
+      LEFT JOIN clientes 
+      ON pedidos.cliente_id = clientes.id
+      ORDER BY pedidos.fecha_entrega ASC
     `);
+
     res.json(result.rows);
 
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({error: "Error obteniendo pedidos"});
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error obteniendo pedidos" });
   }
 });
 
