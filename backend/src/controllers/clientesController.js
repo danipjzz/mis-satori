@@ -1,23 +1,18 @@
+const db = require("../config/db");
+
 exports.actualizarCorreo = async (req, res) => {
-
-  const { telefono, correo } = req.body;
-
   try {
 
-    const result = await pool.query(
-      `UPDATE clientes
-       SET correo = $1
-       WHERE telefono = $2
-       RETURNING *`,
-      [correo, telefono]
-    );
+    await db.query(`
+      UPDATE clientes
+      SET correo = LOWER(REPLACE(nombre, ' ', '')) || '@gmail.com'
+      WHERE correo IS NULL OR correo = '';
+    `);
 
-    res.json(result.rows[0]);
+    res.json({ mensaje: "Correos actualizados correctamente" });
 
   } catch (error) {
-
     console.error(error);
-    res.status(500).json({ error: "Error actualizando correo" });
-
+    res.status(500).json({ error: "Error actualizando correos" });
   }
 };
