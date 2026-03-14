@@ -1,17 +1,15 @@
 require('dotenv').config();
-
 const express = require('express');
+
 const app = express();
 
-const pedidosRoutes = require('./src/routes/pedidos');
-const clientesRoutes = require("./src/routes/clientes");
-
-// IMPORTANTE: primero el middleware
 app.use(express.json());
 
-// luego las rutas
-app.use("/clientes", clientesRoutes);
+const pedidosRoutes = require('./src/routes/pedidos');
+const clientesRoutes = require('./src/routes/clientes');
+
 app.use('/pedidos', pedidosRoutes);
+app.use('/clientes', clientesRoutes);
 
 app.get('/', (req, res) => {
   res.send('API MIS Satori funcionando');
