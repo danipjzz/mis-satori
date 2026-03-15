@@ -3,23 +3,15 @@ const pool = require("../config/db");
 function limpiarFecha(valor) {
   if (!valor) return null;
 
-  // ya viene formateado correctamente YYYY-MM-DD
+  // YYYY-MM-DD
   if (typeof valor === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(valor)) return valor;
 
-  // formato DD/MM/YYYY que viene de Google Sheets en Venezuela
+  // DD/MM/YYYY que viene de Google Forms en Venezuela
   if (typeof valor === 'string' && /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(valor)) {
     const [dia, mes, anio] = valor.split('/');
     return `${anio}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
   }
 
-  // formato con hora: "DD/MM/YYYY HH:mm:ss"
-  if (typeof valor === 'string' && /^\d{1,2}\/\d{1,2}\/\d{4}\s/.test(valor)) {
-    const [fecha] = valor.split(' ');
-    const [dia, mes, anio] = fecha.split('/');
-    return `${anio}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
-  }
-
-  // intentar parsear como UTC para evitar desfase
   const fecha = new Date(valor);
   if (isNaN(fecha.getTime())) return null;
   const anio = fecha.getUTCFullYear();
@@ -30,17 +22,23 @@ function limpiarFecha(valor) {
 
 function limpiarHora(valor) {
   if (!valor) return null;
-  // ya viene formateado correctamente
-  if (typeof valor === 'string' && /^\d{2}:\d{2}(:\d{2})?$/.test(valor)) return valor;
+
+  // HH:mm:ss o H:mm:ss (con uno o dos dígitos en la hora)
+  if (typeof valor === 'string' && /^\d{1,2}:\d{2}(:\d{2})?$/.test(valor)) {
+    const partes = valor.split(':');
+    const h = partes[0].padStart(2, '0');
+    const m = partes[1].padStart(2, '0');
+    const s = (partes[2] || '00').padStart(2, '0');
+    return `${h}:${m}:${s}`;
+  }
+
   const fecha = new Date(valor);
   if (isNaN(fecha.getTime())) return null;
-  // usar UTC porque la hora base 1899 de Sheets viene en UTC
   const h = fecha.getUTCHours().toString().padStart(2, '0');
   const m = fecha.getUTCMinutes().toString().padStart(2, '0');
   const s = fecha.getUTCSeconds().toString().padStart(2, '0');
   return `${h}:${m}:${s}`;
 }
-
 
 exports.crearPedido = async (req, res) => {
   const {
@@ -55,7 +53,8 @@ exports.crearPedido = async (req, res) => {
     relleno_base,
     relleno_especial,
     tipo_torta_especial,
-    tipo_torta
+    tipo_torta,
+    postres
   } = req.body;
 
   try {
@@ -91,34 +90,25 @@ exports.crearPedido = async (req, res) => {
     }
 
     const pedido = await pool.query(
-      `INSERT INTO pedidos(
-        cliente_id,
-        fecha_registro,
-        fecha_entrega,
-        hora_entrega,
-        tipo_pedido,
-        tipo_torta,
-        peso_torta,
-        sabor_ponque,
-        relleno_base,
-        relleno_especial,
-        tipo_torta_especial
-      )
-      VALUES($1, NOW(), $2, $3, $4, $5, $6, $7, $8, $9, $10)
-      RETURNING *`,
-      [
-        cliente_id,
-        fechaEntrega,
-        horaEntrega,
-        tipo_pedido          || null,
-        tipo_torta           || null,
-        peso_torta           || null,
-        sabor_ponque         || null,
-        relleno_base         || null,
-        relleno_especial     || null,
-        tipo_torta_especial  || null
-      ]
-    );
+  `INSERT INTO pedidos(
+    cliente_id, fecha_registro, fecha_entrega, hora_entrega,
+    tipo_pedido, tipo_torta, peso_torta, sabor_ponque,
+    relleno_base, relleno_especial, tipo_torta_especial, postres
+  )
+  VALUES($1, NOW(), $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+  RETURNING *`,
+  [
+    cliente_id, fechaEntrega, horaEntrega,
+    tipo_pedido          || null,
+    tipo_torta           || null,
+    peso_torta           || null,
+    sabor_ponque         || null,
+    relleno_base         || null,
+    relleno_especial     || null,
+    tipo_torta_especial  || null,
+    postres              || null
+  ]
+);
 
     res.json(pedido.rows[0]);
 

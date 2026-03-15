@@ -36,6 +36,7 @@ app.get("/pedidos", async (req, res) => {
         pedidos.relleno_base,
         pedidos.relleno_especial,
         pedidos.tipo_torta_especial,
+        pedidos.postres,  
         pedidos.estado
       FROM pedidos
       LEFT JOIN clientes ON pedidos.cliente_id = clientes.id
