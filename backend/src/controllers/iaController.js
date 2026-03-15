@@ -1,16 +1,12 @@
-const Anthropic = require('@anthropic-ai/sdk');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
 exports.generarMensaje = async (req, res) => {
-  const { nombre, historial, razon } = req.body;  // ← agregar razon
+  const { nombre, historial, razon } = req.body;
   try {
-    const message = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1000,
-      messages: [{
-        role: "user",
-        content: `Eres el asistente de Satori, una pastelería artesanal venezolana.
+    const prompt = `Eres el asistente de Satori, una pastelería artesanal venezolana. 
 Genera un mensaje de WhatsApp corto, cálido y personalizado para ${nombre}.
 Su historial de pedidos: ${historial}.
 Razón para contactar: ${razon}.
@@ -21,25 +17,21 @@ El mensaje debe:
 - Máximo 3 oraciones
 - Sin emojis excesivos, máximo 2
 - No mencionar precios
-Solo devuelve el mensaje, sin explicaciones.`
-      }]
-    });
-    res.json({ mensaje: message.content[0].text });
+Solo devuelve el mensaje, sin explicaciones.`;
+
+    const result = await model.generateContent(prompt);
+    const texto = result.response.text();
+    res.json({ mensaje: texto });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Error generando mensaje" });
+    res.status(500).json({ error: "Error generando mensaje", detalle: error.message });
   }
 };
 
 exports.generarAnalisis = async (req, res) => {
   const { resumen } = req.body;
   try {
-    const message = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1000,
-      messages: [{
-        role: "user",
-        content: `Eres analista de negocios para Satori, una pastelería venezolana.
+    const prompt = `Eres analista de negocios para Satori, una pastelería venezolana.
 Analiza estos pedidos recientes y da:
 1. Predicción de ventas para las próximas 2 semanas
 2. Productos que más se pedirán
@@ -48,12 +40,13 @@ Analiza estos pedidos recientes y da:
 Pedidos recientes:
 ${resumen}
 
-Responde en español, de forma concisa y práctica. Máximo 150 palabras.`
-      }]
-    });
-    res.json({ analisis: message.content[0].text });
+Responde en español, de forma concisa y práctica. Máximo 150 palabras.`;
+
+    const result = await model.generateContent(prompt);
+    const texto = result.response.text();
+    res.json({ analisis: texto });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Error generando análisis" });
+    res.status(500).json({ error: "Error generando análisis", detalle: error.message });
   }
 };
