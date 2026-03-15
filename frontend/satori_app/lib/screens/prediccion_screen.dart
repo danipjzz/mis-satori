@@ -58,6 +58,7 @@ class _PrediccionScreenState extends State<PrediccionScreen> with SingleTickerPr
   List<ClienteMensaje> _clientes = [];
   bool _generandoMensajes = false;
   int _mensajesGenerados = 0;
+  int _totalClientes = 0;
 
   @override
   void initState() {
@@ -74,63 +75,82 @@ class _PrediccionScreenState extends State<PrediccionScreen> with SingleTickerPr
   }
 
   Future<void> _cargarAnalisis() async {
-    setState(() => _cargandoAnalisis = true);
-    try {
-      final data = await ApiService.getAnalisis();
-      setState(() {
-        _pedidosRecientes = data['pedidos'] ?? [];
+  setState(() => _cargandoAnalisis = true);
+  try {
+    final data = await ApiService.getAnalisis();
+    setState(() {
+      _pedidosRecientes = data['pedidos'] ?? [];
+      try {
         _inactivos = (data['inactivos'] as List).map((c) => ClienteInactivo(
           nombre: c['nombre'] ?? 'Cliente',
           telefono: c['telefono'] ?? '',
-          ultimoPedido: c['ultimo_pedido']?.toString().substring(0, 10),
+          ultimoPedido: c['ultimo_pedido'] != null && c['ultimo_pedido'].toString().length >= 10
+              ? c['ultimo_pedido'].toString().substring(0, 10)
+              : c['ultimo_pedido']?.toString(),
         )).toList();
-        _cargandoAnalisis = false;
-      });
-    } catch (e) {
-      setState(() => _cargandoAnalisis = false);
-    }
+      } catch (e) {
+        print("ERROR mapeando inactivos: $e");
+        _inactivos = [];
+      }
+      _cargandoAnalisis = false;
+    });
+  } catch (e) {
+    print("ERROR en _cargarAnalisis: $e");
+    setState(() => _cargandoAnalisis = false);
   }
+}
+
+  
 
   Future<void> _cargarClientes() async {
   setState(() => _cargandoClientes = true);
   try {
     final data = await ApiService.getClientesConHistorial();
+    // ver cuantos tienen mas de 1 pedido
+    final conMasDeUnPedido = (data as List).where((c) => 
+      (c['pedidos'] as List?)?.length != null && 
+      (c['pedidos'] as List).length > 1
+    ).length;
     final hoy = DateTime.now();
 
     final filtrados = (data as List)
         .where((c) => c['telefono'] != null && (c['pedidos'] as List?)?.isNotEmpty == true)
         .map((c) {
           final pedidos = (c['pedidos'] as List);
-          
-          // ordenar pedidos por fecha
+          final nombre = c['nombre'] ?? '';
+
           pedidos.sort((a, b) {
             final fa = DateTime.tryParse(a['fecha_entrega']?.toString() ?? '') ?? DateTime(2000);
             final fb = DateTime.tryParse(b['fecha_entrega']?.toString() ?? '') ?? DateTime(2000);
             return fa.compareTo(fb);
           });
 
-          final primerPedido  = DateTime.tryParse(pedidos.first['fecha_entrega']?.toString() ?? '');
-          final ultimoPedido  = DateTime.tryParse(pedidos.last['fecha_entrega']?.toString() ?? '');
+          final primerPedido = DateTime.tryParse(pedidos.first['fecha_entrega']?.toString() ?? '');
 
-          // aniversario primer pedido (±7 días este año)
+          final pedidosPasados = pedidos.where((p) {
+            final f = DateTime.tryParse(p['fecha_entrega']?.toString() ?? '');
+            return f != null && f.isBefore(hoy);
+          }).toList();
+
+          final ultimoPedido = pedidosPasados.isNotEmpty
+              ? DateTime.tryParse(pedidosPasados.last['fecha_entrega']?.toString() ?? '')
+              : null;
+
           bool anivPrimero = false;
           if (primerPedido != null) {
             final aniv = DateTime(hoy.year, primerPedido.month, primerPedido.day);
             anivPrimero = aniv.difference(hoy).inDays.abs() <= 7;
           }
 
-          // aniversario último pedido (±7 días este año)
           bool anivUltimo = false;
           if (ultimoPedido != null) {
             final aniv = DateTime(hoy.year, ultimoPedido.month, ultimoPedido.day);
             anivUltimo = aniv.difference(hoy).inDays.abs() <= 7;
           }
 
-          // sin pedir hace más de 60 días
           final inactivo = ultimoPedido != null &&
-              hoy.difference(ultimoPedido).inDays > 60;
+              hoy.difference(ultimoPedido).inDays > 180;
 
-          // pedido próximo (entrega en los próximos 3 días)
           final proximoPedido = pedidos.any((p) {
             final f = DateTime.tryParse(p['fecha_entrega']?.toString() ?? '');
             if (f == null) return false;
@@ -138,38 +158,48 @@ class _PrediccionScreenState extends State<PrediccionScreen> with SingleTickerPr
             return diff >= 0 && diff <= 3;
           });
 
-          // razón del mensaje
           String razon = '';
-          if (proximoPedido)  razon = '📦 Pedido próximo';
-          else if (anivPrimero) razon = '🎂 Aniversario primer pedido';
-          else if (anivUltimo)  razon = '🎉 Aniversario último pedido';
-          else if (inactivo)    razon = '😴 Sin pedir hace más de 60 días';
+          if (proximoPedido) razon = 'Pedido proximo';
+          else if (anivPrimero) razon = 'Aniversario primer pedido';
+          else if (anivUltimo) razon = 'Aniversario ultimo pedido';
+          else if (inactivo) razon = 'Sin pedir hace mas de 6 meses';
 
           return razon.isNotEmpty ? ClienteMensaje(
-            nombre:  c['nombre'] ?? 'Cliente',
+            nombre: c['nombre'] ?? 'Cliente',
             telefono: c['telefono'],
-            pedidos:  pedidos,
-            razon:    razon,
+            pedidos: pedidos,
+            razon: razon,
           ) : null;
         })
         .where((c) => c != null)
         .cast<ClienteMensaje>()
         .toList();
 
-    // ordenar: primero pedidos próximos, luego aniversarios, luego inactivos
     filtrados.sort((a, b) {
-      const orden = {'📦 Pedido próximo': 0, '🎂 Aniversario primer pedido': 1, '🎉 Aniversario último pedido': 2, '😴 Sin pedir hace más de 60 días': 3};
+      const orden = {
+        'Pedido proximo': 0,
+        'Aniversario primer pedido': 1,
+        'Aniversario ultimo pedido': 2,
+        'Sin pedir hace mas de 9 meses': 3,
+      };
       return (orden[a.razon] ?? 9).compareTo(orden[b.razon] ?? 9);
     });
 
+
     setState(() {
+      _totalClientes = (data as List)
+          .where((c) => c['telefono'] != null)
+          .length;
       _clientes = filtrados;
       _cargandoClientes = false;
     });
+
   } catch (e) {
+    print("ERROR en _cargarClientes: $e");
     setState(() => _cargandoClientes = false);
   }
 }
+    
 
   Future<void> _generarTodosMensajes() async {
     setState(() { _generandoMensajes = true; _mensajesGenerados = 0; });
@@ -201,7 +231,6 @@ class _PrediccionScreenState extends State<PrediccionScreen> with SingleTickerPr
       return '$tipo ($fecha)';
     }).join(', ');
 
-    print("Generando mensaje para ${cliente.nombre}...");
 
     final res = await http.post(
       Uri.parse('https://mis-satori.onrender.com/ia/mensaje'),
@@ -213,8 +242,6 @@ class _PrediccionScreenState extends State<PrediccionScreen> with SingleTickerPr
       }),
     );
 
-    print("Status: ${res.statusCode}");
-    print("Body: ${res.body}");
 
     final data = jsonDecode(res.body);
     return data['mensaje'] ?? '';
@@ -361,141 +388,130 @@ class _PrediccionScreenState extends State<PrediccionScreen> with SingleTickerPr
 
   // ── TAB ANÁLISIS ───────────────────────────────────────────────────────────
   Widget _buildAnalisis() {
-    if (_cargandoAnalisis) {
-      return const Center(child: CircularProgressIndicator());
-    }
+  if (_cargandoAnalisis) {
+    return const Center(child: CircularProgressIndicator());
+  }
 
-    return RefreshIndicator(
-      onRefresh: _cargarAnalisis,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-
-            const SizedBox(height: 8),
-
-            // KPIs
-            Row(children: [
-              _KpiCard('📦', '${_pedidosRecientes.length}', 'Pedidos 6 meses', Colors.white, SatoriColors.teal),
-              const SizedBox(width: 12),
-              _KpiCard('😴', '${_inactivos.length}', 'Clientes inactivos', Colors.white, SatoriColors.pinkPrimary),
-              const SizedBox(width: 12),
-              _KpiCard('👥', '${_clientes.length}', 'Total clientes', Colors.white, const Color(0xFFB8860B)),
-            ]),
-
-            const SizedBox(height: 20),
-
-            // Top productos reales
-            if (_topProductos.isNotEmpty) ...[
-              const Text('Más pedidos (últimos 6 meses)',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: SatoriColors.textDark, letterSpacing: -0.4)),
-              const SizedBox(height: 14),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.9),
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15)],
-                ),
-                child: Column(
-                  children: _topProductos.entries.toList().asMap().entries.map((entry) {
-                    final i = entry.key;
-                    final nombre = entry.value.key;
-                    final count = entry.value.value;
-                    final max = _topProductos.values.first;
-                    final pct = count / max;
-                    return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                      decoration: BoxDecoration(
-                        border: Border(bottom: BorderSide(
-                          color: i < _topProductos.length - 1 ? SatoriColors.pinkPale : Colors.transparent,
-                          width: 0.5,
-                        )),
-                      ),
-                      child: Row(children: [
-                        Text('${i+1}', style: GoogleFonts.cormorantGaramond(
-                          fontSize: 18, fontWeight: FontWeight.w700,
-                          fontStyle: FontStyle.italic, color: SatoriColors.pinkPrimary,
-                        )),
-                        const SizedBox(width: 14),
-                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(nombre, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: SatoriColors.textDark)),
-                          const SizedBox(height: 4),
-                          Text('$count pedidos', style: const TextStyle(fontSize: 12, color: SatoriColors.textMid)),
-                          const SizedBox(height: 6),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
-                            child: LinearProgressIndicator(
-                              value: pct,
-                              backgroundColor: SatoriColors.pinkPale.withOpacity(0.5),
-                              valueColor: AlwaysStoppedAnimation(
-                                i == 0 ? SatoriColors.teal : SatoriColors.pinkPrimary.withOpacity(0.6)
-                              ),
-                              minHeight: 4,
-                            ),
-                          ),
-                        ])),
-                      ]),
-                    );
-                  }).toList(),
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
-
-            // Análisis IA
+  return RefreshIndicator(
+    onRefresh: _cargarAnalisis,
+    child: SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 8),
+          Row(children: [
+            _KpiCard('📦', '${_pedidosRecientes.length}', 'Pedidos 6 meses', Colors.white, SatoriColors.teal),
+            const SizedBox(width: 12),
+            _KpiCard('😴', '${_clientes.where((c) => c.razon == "Sin pedir hace mas de 6 meses").length}', 'Clientes inactivos', Colors.white, SatoriColors.pinkPrimary),
+            const SizedBox(width: 12),
+            _KpiCard('👥', '$_totalClientes', 'Total clientes', Colors.white, const Color(0xFFB8860B)),
+          ]),
+          const SizedBox(height: 20),
+          if (_topProductos.isNotEmpty) ...[
+            const Text('Mas pedidos (ultimos 6 meses)',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: SatoriColors.textDark, letterSpacing: -0.4)),
+            const SizedBox(height: 14),
             Container(
-              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: SatoriColors.tealPale.withOpacity(0.4),
+                color: Colors.white.withOpacity(0.9),
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: SatoriColors.tealLight.withOpacity(0.3), width: 1.5),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15)],
               ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                    const Text('🔮 Predicción IA',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: SatoriColors.tealDark)),
-                    if (!_cargandoAnalisisIA)
-                      SatoriBounce(
-                        onTap: _generarAnalisisIA,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: SatoriColors.teal,
-                            borderRadius: BorderRadius.circular(12),
+                children: _topProductos.entries.toList().asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final nombre = entry.value.key;
+                  final count = entry.value.value;
+                  final max = _topProductos.values.first;
+                  final pct = count / max;
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                    decoration: BoxDecoration(
+                      border: Border(bottom: BorderSide(
+                        color: i < _topProductos.length - 1 ? SatoriColors.pinkPale : Colors.transparent,
+                        width: 0.5,
+                      )),
+                    ),
+                    child: Row(children: [
+                      Text('${i+1}', style: GoogleFonts.cormorantGaramond(
+                        fontSize: 18, fontWeight: FontWeight.w700,
+                        fontStyle: FontStyle.italic, color: SatoriColors.pinkPrimary,
+                      )),
+                      const SizedBox(width: 14),
+                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(nombre, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: SatoriColors.textDark)),
+                        const SizedBox(height: 4),
+                        Text('$count pedidos', style: const TextStyle(fontSize: 12, color: SatoriColors.textMid)),
+                        const SizedBox(height: 6),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: pct,
+                            backgroundColor: SatoriColors.pinkPale.withOpacity(0.5),
+                            valueColor: AlwaysStoppedAnimation(
+                              i == 0 ? SatoriColors.teal : SatoriColors.pinkPrimary.withOpacity(0.6)
+                            ),
+                            minHeight: 4,
                           ),
-                          child: Text(_analisisIA.isEmpty ? 'Analizar' : 'Regenerar',
-                            style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
                         ),
-                      ),
-                  ]),
-                  if (_cargandoAnalisisIA) ...[
-                    const SizedBox(height: 16),
-                    const Center(child: CircularProgressIndicator()),
-                  ] else if (_analisisIA.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    Text(_analisisIA,
-                      style: const TextStyle(fontSize: 14, color: SatoriColors.tealDark, height: 1.6)),
-                  ] else ...[
-                    const SizedBox(height: 8),
-                    const Text('Toca "Analizar" para obtener predicciones basadas en tu historial real.',
-                      style: TextStyle(fontSize: 13, color: SatoriColors.textMid)),
-                  ],
-                ],
+                      ])),
+                    ]),
+                  );
+                }).toList(),
               ),
             ),
-
             const SizedBox(height: 24),
-
-            const SizedBox(height: 30),
           ],
-        ),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: SatoriColors.tealPale.withOpacity(0.4),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: SatoriColors.tealLight.withOpacity(0.3), width: 1.5),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                  const Text('Prediccion IA',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: SatoriColors.tealDark)),
+                  if (!_cargandoAnalisisIA)
+                    SatoriBounce(
+                      onTap: _generarAnalisisIA,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: SatoriColors.teal,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(_analisisIA.isEmpty ? 'Analizar' : 'Regenerar',
+                          style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
+                      ),
+                    ),
+                ]),
+                if (_cargandoAnalisisIA) ...[
+                  const SizedBox(height: 16),
+                  const Center(child: CircularProgressIndicator()),
+                ] else if (_analisisIA.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text(_analisisIA,
+                    style: const TextStyle(fontSize: 14, color: SatoriColors.tealDark, height: 1.6)),
+                ] else ...[
+                  const SizedBox(height: 8),
+                  const Text('Toca Analizar para obtener predicciones basadas en tu historial real.',
+                    style: TextStyle(fontSize: 13, color: SatoriColors.textMid)),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 30),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   // ── TAB MENSAJES ───────────────────────────────────────────────────────────
   Widget _buildMensajes() {
@@ -604,8 +620,16 @@ class _TarjetaMensajeState extends State<_TarjetaMensaje> {
     super.dispose();
   }
 
+  String _emojiRazon(String razon) {
+    if (razon.contains('proximo')) return '📦 $razon';
+    if (razon.contains('primer')) return '🎂 $razon';
+    if (razon.contains('ultimo')) return '🎉 $razon';
+    if (razon.contains('Sin')) return '😴 $razon';
+    return razon;
+  }
   @override
   Widget build(BuildContext context) {
+    
     final cliente = widget.cliente;
 
     return Container(
@@ -634,7 +658,7 @@ class _TarjetaMensajeState extends State<_TarjetaMensaje> {
                     color: SatoriColors.yellowLight,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text(cliente.razon,
+                  child: Text(_emojiRazon(cliente.razon),
                     style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFB8860B))),
                 ),
             ])),
