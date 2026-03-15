@@ -1,26 +1,30 @@
 const pool = require("../config/db");
 
-function limpiarHora(valor) {
+function limpiarFecha(valor) {
   if (!valor) return null;
-  if (typeof valor === 'string' && /^\d{2}:\d{2}(:\d{2})?$/.test(valor)) {
-    return valor;
-  }
+  // ya viene formateado correctamente
+  if (typeof valor === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(valor)) return valor;
+  // intentar parsear cualquier formato
   const fecha = new Date(valor);
   if (isNaN(fecha.getTime())) return null;
+  // usar UTC para evitar desfase de zona horaria
+  const anio = fecha.getUTCFullYear();
+  const mes = (fecha.getUTCMonth() + 1).toString().padStart(2, '0');
+  const dia = fecha.getUTCDate().toString().padStart(2, '0');
+  return `${anio}-${mes}-${dia}`;
+}
+
+function limpiarHora(valor) {
+  if (!valor) return null;
+  // ya viene formateado correctamente
+  if (typeof valor === 'string' && /^\d{2}:\d{2}(:\d{2})?$/.test(valor)) return valor;
+  const fecha = new Date(valor);
+  if (isNaN(fecha.getTime())) return null;
+  // usar UTC porque la hora base 1899 de Sheets viene en UTC
   const h = fecha.getUTCHours().toString().padStart(2, '0');
   const m = fecha.getUTCMinutes().toString().padStart(2, '0');
   const s = fecha.getUTCSeconds().toString().padStart(2, '0');
   return `${h}:${m}:${s}`;
-}
-
-function limpiarFecha(valor) {
-  if (!valor) return null;
-  if (typeof valor === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(valor)) {
-    return valor;
-  }
-  const fecha = new Date(valor);
-  if (isNaN(fecha.getTime())) return null;
-  return fecha.toISOString().substring(0, 10);
 }
 
 
