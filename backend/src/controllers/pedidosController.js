@@ -2,12 +2,26 @@ const pool = require("../config/db");
 
 function limpiarFecha(valor) {
   if (!valor) return null;
-  // ya viene formateado correctamente
+
+  // ya viene formateado correctamente YYYY-MM-DD
   if (typeof valor === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(valor)) return valor;
-  // intentar parsear cualquier formato
+
+  // formato DD/MM/YYYY que viene de Google Sheets en Venezuela
+  if (typeof valor === 'string' && /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(valor)) {
+    const [dia, mes, anio] = valor.split('/');
+    return `${anio}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
+  }
+
+  // formato con hora: "DD/MM/YYYY HH:mm:ss"
+  if (typeof valor === 'string' && /^\d{1,2}\/\d{1,2}\/\d{4}\s/.test(valor)) {
+    const [fecha] = valor.split(' ');
+    const [dia, mes, anio] = fecha.split('/');
+    return `${anio}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
+  }
+
+  // intentar parsear como UTC para evitar desfase
   const fecha = new Date(valor);
   if (isNaN(fecha.getTime())) return null;
-  // usar UTC para evitar desfase de zona horaria
   const anio = fecha.getUTCFullYear();
   const mes = (fecha.getUTCMonth() + 1).toString().padStart(2, '0');
   const dia = fecha.getUTCDate().toString().padStart(2, '0');
@@ -107,6 +121,8 @@ exports.crearPedido = async (req, res) => {
     console.error("ERROR CREANDO PEDIDO:");
     console.error(error);
     console.log("DATOS RECIBIDOS:", req.body);
+    console.log("fecha_entrega raw:", fecha_entrega);
+    console.log("fecha_entrega limpia:", limpiarFecha(fecha_entrega));  
     res.status(500).json({ error: "Error creando pedido", detalle: error.message });
   }
 };
