@@ -37,15 +37,24 @@ class ApiService {
       throw Exception("Error cargando historial");
     }
   }
+  
+  static Future<Map> getAnalisis() async {
+    final res = await http.get(Uri.parse("$baseUrl/clientes/analisis"));
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body);
+    } else {
+      throw Exception("Error obteniendo análisis");
+    }
+  }
 
   static Future<List> getVentas() async {
-  final res = await http.get(Uri.parse("$baseUrl/ventas"));
-  if (res.statusCode == 200) {
-    return jsonDecode(res.body);
-  } else {
-    throw Exception("Error cargando ventas");
+    final res = await http.get(Uri.parse("$baseUrl/ventas"));
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body);
+    } else {
+      throw Exception("Error cargando ventas");
+    }
   }
-}
   // ← nuevo: corregir fecha y hora de un pedido existente
   static Future<void> corregirFechaHora(String id, String fechaEntrega, String horaEntrega) async {
     final res = await http.patch(
