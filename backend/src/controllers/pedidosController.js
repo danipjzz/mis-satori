@@ -110,3 +110,41 @@ exports.crearPedido = async (req, res) => {
     res.status(500).json({ error: "Error creando pedido", detalle: error.message });
   }
 };
+
+exports.marcarEntregado = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query(
+      `UPDATE pedidos SET estado = 'entregado' WHERE id = $1 RETURNING *`,
+      [id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Pedido no encontrado" });
+    }
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error actualizando estado", detalle: error.message });
+  }
+};
+
+
+exports.corregirFechaHora = async (req, res) => {
+  const { id } = req.params;
+  const { fecha_entrega, hora_entrega } = req.body;
+  try {
+    const fechaEntrega = limpiarFecha(fecha_entrega);
+    const horaEntrega  = limpiarHora(hora_entrega);
+    const result = await pool.query(
+      `UPDATE pedidos SET fecha_entrega = $1, hora_entrega = $2 WHERE id = $3 RETURNING *`,
+      [fechaEntrega, horaEntrega, id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Pedido no encontrado" });
+    }
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error corrigiendo pedido", detalle: error.message });
+  }
+};
