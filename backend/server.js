@@ -11,7 +11,9 @@ app.use(express.json());
 const pedidosRoutes = require('./src/routes/pedidos');
 const clientesRoutes = require('./src/routes/clientes');
 const ventasRoutes = require('./src/routes/ventas');
+const iaRoutes = require('./src/routes/ia');
 
+app.use('/ia', iaRoutes);
 app.use('/pedidos', pedidosRoutes);
 app.use('/clientes', clientesRoutes);
 app.use('/ventas', ventasRoutes);
