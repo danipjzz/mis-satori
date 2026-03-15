@@ -147,20 +147,24 @@ class _VentaScreenState extends State<VentaScreen> with SingleTickerProviderStat
   });
 
   Future<void> _registrarVenta(String producto, int cantidad, int precio) async {
-    await http.post(
-      Uri.parse("https://mis-satori.onrender.com/ventas"),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "producto":        producto,
-        "cantidad":        cantidad,
-        "precio_unitario": precio,
-        "nombre":          _nombreCtrl.text.trim(),
-        "telefono":        _telefonoCtrl.text.trim(),
-        "correo":          _correoCtrl.text.trim(),
-        "metodo_pago":     _payMethod,
-      }),
-    );
-  }
+  final ahora = DateTime.now();
+  final fecha = '${ahora.year}-${ahora.month.toString().padLeft(2, '0')}-${ahora.day.toString().padLeft(2, '0')}';
+
+  await http.post(
+    Uri.parse("https://mis-satori.onrender.com/ventas"),
+    headers: {"Content-Type": "application/json"},
+    body: jsonEncode({
+      "producto":        producto,
+      "cantidad":        cantidad,
+      "precio_unitario": precio,
+      "nombre":          _nombreCtrl.text.trim(),
+      "telefono":        _telefonoCtrl.text.trim(),
+      "correo":          _correoCtrl.text.trim(),
+      "metodo_pago":     _payMethod,
+      "fecha":           fecha,
+    }),
+  );
+}
 
   void _cobrar() async {
     if (_payMethod == null) {
