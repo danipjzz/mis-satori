@@ -46,7 +46,6 @@ exports.crearPedido = async (req, res) => {
   } = req.body;
 
   try {
-    const fechaRegistro = limpiarFecha(fecha_registro);
     const fechaEntrega  = limpiarFecha(fecha_entrega);
     const horaEntrega   = limpiarHora(hora_entrega);
 
@@ -80,36 +79,36 @@ exports.crearPedido = async (req, res) => {
     }
 
     // 3. crear pedido
-    const pedido = await pool.query(
-      `INSERT INTO pedidos(
-        cliente_id,
-        fecha_registro,
-        fecha_entrega,
-        hora_entrega,
-        tipo_pedido,
-        tipo_torta,
-        peso_torta,
-        sabor_ponque,
-        relleno_base,
-        relleno_especial,
-        tipo_torta_especial
-      )
-      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-      RETURNING *`,
-      [
-        cliente_id,
-        fechaRegistro,
-        fechaEntrega,
-        horaEntrega,
-        tipo_pedido     || null,
-        tipo_torta      || null,
-        peso_torta      || null,
-        sabor_ponque    || null,
-        relleno_base    || null,
-        relleno_especial || null,
-        tipo_torta_especial || null
-      ]
-    );
+  // 3. crear pedido
+  const pedido = await pool.query(
+    `INSERT INTO pedidos(
+      cliente_id,
+      fecha_registro,
+      fecha_entrega,
+      hora_entrega,
+      tipo_pedido,
+      tipo_torta,
+      peso_torta,
+      sabor_ponque,
+      relleno_base,
+      relleno_especial,
+      tipo_torta_especial
+    )
+    VALUES($1, NOW(), $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    RETURNING *`,
+    [
+      cliente_id,
+      fechaEntrega,
+      horaEntrega,
+      tipo_pedido          || null,
+      tipo_torta           || null,
+      peso_torta           || null,
+      sabor_ponque         || null,
+      relleno_base         || null,
+      relleno_especial     || null,
+      tipo_torta_especial  || null
+    ]
+  );
 
     res.json(pedido.rows[0]);
 
