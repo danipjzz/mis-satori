@@ -59,8 +59,13 @@ exports.crearPedido = async (req, res) => {
   } = req.body;
 
   try {
+    console.log("fecha_entrega raw:", fecha_entrega);
+    
     const fechaEntrega = limpiarFecha(fecha_entrega);
     const horaEntrega  = limpiarHora(hora_entrega);
+    
+    console.log("fecha_entrega limpia:", fechaEntrega);
+
 
     let cliente = await pool.query(
       "SELECT id FROM clientes WHERE telefono = $1", [telefono]
@@ -121,8 +126,6 @@ exports.crearPedido = async (req, res) => {
     console.error("ERROR CREANDO PEDIDO:");
     console.error(error);
     console.log("DATOS RECIBIDOS:", req.body);
-    console.log("fecha_entrega raw:", fecha_entrega);
-    console.log("fecha_entrega limpia:", limpiarFecha(fecha_entrega));  
     res.status(500).json({ error: "Error creando pedido", detalle: error.message });
   }
 };
