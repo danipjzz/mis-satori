@@ -22,7 +22,6 @@ app.get('/', (req, res) => {
 
 app.get("/pedidos", async (req, res) => {
   try {
-
     const result = await pool.query(`
       SELECT 
         pedidos.id,
@@ -30,16 +29,19 @@ app.get("/pedidos", async (req, res) => {
         clientes.telefono,
         pedidos.fecha_entrega,
         pedidos.hora_entrega,
+        pedidos.tipo_pedido,
         pedidos.tipo_torta,
+        pedidos.peso_torta,
+        pedidos.sabor_ponque,
+        pedidos.relleno_base,
+        pedidos.relleno_especial,
+        pedidos.tipo_torta_especial,
         pedidos.estado
       FROM pedidos
-      LEFT JOIN clientes 
-      ON pedidos.cliente_id = clientes.id
+      LEFT JOIN clientes ON pedidos.cliente_id = clientes.id
       ORDER BY pedidos.fecha_entrega ASC
     `);
-
     res.json(result.rows);
-
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Error obteniendo pedidos" });
