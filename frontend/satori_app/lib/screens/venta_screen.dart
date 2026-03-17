@@ -26,10 +26,13 @@ class VentaRegistro {
     this.cliente, this.telefono,
   });
 
-  factory VentaRegistro.fromJson(Map j) => VentaRegistro(
+  factory VentaRegistro.fromJson(Map j) {
+  return VentaRegistro(
     id:             j["id"].toString(),
     producto:       j["producto"] ?? "",
-    fecha:          j["fecha"]?.toString().substring(0, 10) ?? "",
+    fecha: j["fecha"] != null 
+    ? j["fecha"].toString().substring(0, 10) 
+    : 'Sin fecha',
     hora:           j["hora"]?.toString().substring(0, 5) ?? "",
     metodoPago:     j["metodo_pago"] ?? "",
     cantidad:       j["cantidad"] ?? 0,
@@ -38,6 +41,7 @@ class VentaRegistro {
     cliente:        j["nombre"],
     telefono:       j["telefono"],
   );
+}
 }
 
 // ─── DATOS ───────────────────────────────────────────────────────────────────
@@ -64,7 +68,7 @@ const _productos = [
   Producto(id:'p14', cat:'postres', nombre:'Tres leches de frutas',    desc:'', emoji:'🍓', precio:0),
   Producto(id:'p15', cat:'postres', nombre:'Torta de auyama',          desc:'', emoji:'🎃', precio:0),
   Producto(id:'p16', cat:'postres', nombre:'Brocookies',               desc:'', emoji:'🍪', precio:0),
-  Producto(id:'p17', cat:'postres', nombre:'Otro',                     desc:'Ingresar manualmente', emoji:'✏️', precio:0),
+  Producto(id:'p17', cat:'all', nombre:'Otro', desc:'Ingresar manualmente', emoji:'✏️', precio:0),
   Producto(id:'b1',  cat:'bebidas', nombre:'Café',                     desc:'', emoji:'☕', precio:0),
   Producto(id:'b2',  cat:'bebidas', nombre:'Agua',                     desc:'', emoji:'💧', precio:0),
   Producto(id:'b3',  cat:'bebidas', nombre:'Malteada',                 desc:'', emoji:'🥤', precio:0),
@@ -93,6 +97,7 @@ class _VentaScreenState extends State<VentaScreen> with SingleTickerProviderStat
   final _nombreCtrl   = TextEditingController();
   final _telefonoCtrl = TextEditingController();
   final _correoCtrl   = TextEditingController();
+  final Map<String, String> _nombresManual = {};
 
   // Registro state
   List<VentaRegistro> _ventas = [];
@@ -146,25 +151,26 @@ class _VentaScreenState extends State<VentaScreen> with SingleTickerProviderStat
     if (q <= 0) _carrito.remove(id); else _carrito[id] = q;
   });
 
-  Future<void> _registrarVenta(String producto, int cantidad, int precio) async {
-  final ahora = DateTime.now();
-  final fecha = '${ahora.year}-${ahora.month.toString().padLeft(2, '0')}-${ahora.day.toString().padLeft(2, '0')}';
+  Future<void> _registrarVenta(String productoId, String productoNombre, int cantidad, int precio) async {
+    final ahora = DateTime.now();
+    final fecha = '${ahora.year}-${ahora.month.toString().padLeft(2, '0')}-${ahora.day.toString().padLeft(2, '0')}';
+    final nombre = _nombresManual[productoId] ?? productoNombre;
 
-  await http.post(
-    Uri.parse("https://mis-satori.onrender.com/ventas"),
-    headers: {"Content-Type": "application/json"},
-    body: jsonEncode({
-      "producto":        producto,
-      "cantidad":        cantidad,
-      "precio_unitario": precio,
-      "nombre":          _nombreCtrl.text.trim(),
-      "telefono":        _telefonoCtrl.text.trim(),
-      "correo":          _correoCtrl.text.trim(),
-      "metodo_pago":     _payMethod,
-      "fecha":           fecha,
-    }),
-  );
-}
+    await http.post(
+      Uri.parse("https://mis-satori.onrender.com/ventas"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "producto":        nombre,
+        "cantidad":        cantidad,
+        "precio_unitario": precio,
+        "nombre":          _nombreCtrl.text.trim(),
+        "telefono":        _telefonoCtrl.text.trim(),
+        "correo":          _correoCtrl.text.trim(),
+        "metodo_pago":     _payMethod,
+        "fecha":           fecha,
+      }),
+    );
+  }
 
   void _cobrar() async {
     if (_payMethod == null) {
@@ -174,7 +180,7 @@ class _VentaScreenState extends State<VentaScreen> with SingleTickerProviderStat
       return;
     }
     for (var item in _itemsCarrito) {
-      await _registrarVenta(item.$1.nombre, item.$2, _preciosManual[item.$1.id] ?? item.$1.precio);
+      await _registrarVenta(item.$1.id, item.$1.nombre, item.$2, _preciosManual[item.$1.id] ?? item.$1.precio);
     }
     setState(() => _showSuccess = true);
     Future.delayed(const Duration(seconds: 2), () {
@@ -354,20 +360,65 @@ class _VentaScreenState extends State<VentaScreen> with SingleTickerProviderStat
                           width: double.infinity,
                           child: SatoriBounce(
                             onTap: () async {
-                              final ctrl = TextEditingController();
-                              final precio = await showDialog<int>(
-                                context: context,
-                                builder: (_) => AlertDialog(
-                                  title: Text("Precio de ${p.nombre}"),
-                                  content: TextField(controller: ctrl, keyboardType: TextInputType.number,
-                                    decoration: const InputDecoration(hintText: "Ingresa el precio")),
-                                  actions: [
-                                    TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar")),
-                                    ElevatedButton(onPressed: () => Navigator.pop(context, int.tryParse(ctrl.text)), child: const Text("Aceptar")),
-                                  ],
-                                ),
-                              );
-                              if (precio != null) setState(() { _preciosManual[p.id] = precio; _add(p.id); });
+                              if (p.id == 'p17') {
+                                // dialogo especial para "Otro"
+                                final nombreCtrl = TextEditingController();
+                                final precioCtrl = TextEditingController();
+                                final resultado = await showDialog<Map<String, dynamic>>(
+                                  context: context,
+                                  builder: (_) => AlertDialog(
+                                    title: const Text("Producto personalizado"),
+                                    content: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        TextField(
+                                          controller: nombreCtrl,
+                                          decoration: const InputDecoration(hintText: "Nombre del producto"),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        TextField(
+                                          controller: precioCtrl,
+                                          keyboardType: TextInputType.number,
+                                          decoration: const InputDecoration(hintText: "Precio"),
+                                        ),
+                                      ],
+                                    ),
+                                    actions: [
+                                      TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar")),
+                                      ElevatedButton(
+                                        onPressed: () => Navigator.pop(context, {
+                                          'nombre': nombreCtrl.text.trim(),
+                                          'precio': int.tryParse(precioCtrl.text) ?? 0,
+                                        }),
+                                        child: const Text("Aceptar"),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                if (resultado != null && resultado['nombre'].isNotEmpty) {
+                                  setState(() {
+                                    _preciosManual[p.id] = resultado['precio'];
+                                    _nombresManual[p.id] = resultado['nombre'];
+                                    _add(p.id);
+                                  });
+                                }
+                              } else {
+                                // dialogo normal para los demás
+                                final ctrl = TextEditingController();
+                                final precio = await showDialog<int>(
+                                  context: context,
+                                  builder: (_) => AlertDialog(
+                                    title: Text("Precio de ${p.nombre}"),
+                                    content: TextField(controller: ctrl, keyboardType: TextInputType.number,
+                                      decoration: const InputDecoration(hintText: "Ingresa el precio")),
+                                    actions: [
+                                      TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancelar")),
+                                      ElevatedButton(onPressed: () => Navigator.pop(context, int.tryParse(ctrl.text)), child: const Text("Aceptar")),
+                                    ],
+                                  ),
+                                );
+                                if (precio != null) setState(() { _preciosManual[p.id] = precio; _add(p.id); });
+                              }
                             },
                             child: Container(
                               padding: const EdgeInsets.symmetric(vertical: 10),
