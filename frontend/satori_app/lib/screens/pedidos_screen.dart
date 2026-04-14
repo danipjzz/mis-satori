@@ -108,7 +108,7 @@ class _PedidosScreenState extends State<PedidosScreen> {
 
     for (var p in data) {
       if (p["fecha_entrega"] == null) continue;
-
+      if (p["fecha_entrega"] == null) continue;
       DateTime fecha;
       try {
         fecha = DateTime.parse(p["fecha_entrega"]).toUtc();
