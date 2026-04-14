@@ -17,7 +17,7 @@ Razón para contactar: ${razon}.
 El mensaje debe:
 - Ser en español venezolano, informal y cariñoso
 - Mencionar la razón de contacto de forma natural
-- Invitarle a hacer un nuevo pedido
+- Invitarle a hacer un nuevo pedido de forma natural, no agresiva.
 - Máximo 3 oraciones
 - Sin emojis excesivos, máximo 2
 - No mencionar precios
