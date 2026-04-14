@@ -107,14 +107,18 @@ class _PedidosScreenState extends State<PedidosScreen> {
     Map<DateTime, List<Pedido>> map = {};
 
     for (var p in data) {
-      if (p["fecha_entrega"] == null) continue;
-      if (p["fecha_entrega"] == null) continue;
-      DateTime fecha;
-      try {
-        fecha = DateTime.parse(p["fecha_entrega"]).toUtc();
-      } catch (_) {
-        continue;
-      }
+
+    // 🚫 FILTRO CLAVE
+    if (p["estado"]?.toString() == "entregado") continue;
+
+    if (p["fecha_entrega"] == null) continue;
+
+    DateTime fecha;
+    try {
+      fecha = DateTime.parse(p["fecha_entrega"]).toUtc();
+    } catch (_) {
+      continue;
+    }
 
       final day = DateTime(fecha.year, fecha.month, fecha.day);
 
