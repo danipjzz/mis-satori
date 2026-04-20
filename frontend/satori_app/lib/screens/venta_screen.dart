@@ -18,7 +18,9 @@ class VentaRegistro {
   final String id, producto, fecha, hora, metodoPago;
   final int cantidad, precioUnitario, total;
   final String? cliente, telefono;
+  final String? ordenId;
 
+  
   const VentaRegistro({
     required this.id, required this.producto, required this.fecha,
     required this.hora, required this.metodoPago, required this.cantidad,
@@ -40,6 +42,9 @@ class VentaRegistro {
     total:          j["total"] ?? 0,
     cliente:        j["nombre"],
     telefono:       j["telefono"],
+    // en fromJson:
+    ordenId: j["orden_id"]?.toString(),
+
   );
 }
 }
@@ -108,7 +113,9 @@ class _VentaScreenState extends State<VentaScreen> with SingleTickerProviderStat
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
-      if (_tabController.index == 1) _cargarVentas();
+      if (_tabController.index == 1 && !_tabController.indexIsChanging) {
+    _cargarVentas();
+  }
     });
   }
 
@@ -151,7 +158,7 @@ class _VentaScreenState extends State<VentaScreen> with SingleTickerProviderStat
     if (q <= 0) _carrito.remove(id); else _carrito[id] = q;
   });
 
-  Future<void> _registrarVenta(String productoId, String productoNombre, int cantidad, int precio) async {
+  Future<void> _registrarVenta(String productoId, String productoNombre, int cantidad, int precio, String ordenId) async {
     final ahora = DateTime.now();
     final fecha = '${ahora.year}-${ahora.month.toString().padLeft(2, '0')}-${ahora.day.toString().padLeft(2, '0')}';
     final nombre = _nombresManual[productoId] ?? productoNombre;
@@ -168,6 +175,7 @@ class _VentaScreenState extends State<VentaScreen> with SingleTickerProviderStat
         "correo":          _correoCtrl.text.trim(),
         "metodo_pago":     _payMethod,
         "fecha":           fecha,
+        "orden_id":        ordenId,
       }),
     );
   }
@@ -179,8 +187,18 @@ class _VentaScreenState extends State<VentaScreen> with SingleTickerProviderStat
       );
       return;
     }
+
+    // generar ID único para esta orden
+    final ordenId = DateTime.now().millisecondsSinceEpoch.toString();
+
     for (var item in _itemsCarrito) {
-      await _registrarVenta(item.$1.id, item.$1.nombre, item.$2, _preciosManual[item.$1.id] ?? item.$1.precio);
+      await _registrarVenta(
+        item.$1.id,
+        item.$1.nombre,
+        item.$2,
+        _preciosManual[item.$1.id] ?? item.$1.precio,
+        ordenId,
+      );
     }
     setState(() => _showSuccess = true);
     Future.delayed(const Duration(seconds: 2), () {
@@ -605,14 +623,19 @@ class _VentaScreenState extends State<VentaScreen> with SingleTickerProviderStat
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           const Text('📋', style: TextStyle(fontSize: 48)),
           const SizedBox(height: 12),
-          const Text('No hay ventas registradas', style: TextStyle(fontSize: 16, color: SatoriColors.textMid)),
+          const Text('No hay ventas registradas',
+              style: TextStyle(fontSize: 16, color: SatoriColors.textMid)),
           const SizedBox(height: 16),
           SatoriBounce(
             onTap: _cargarVentas,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              decoration: BoxDecoration(color: SatoriColors.pinkPrimary, borderRadius: BorderRadius.circular(14)),
-              child: const Text('Recargar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+              decoration: BoxDecoration(
+                color: SatoriColors.pinkPrimary,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Text('Recargar',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
             ),
           ),
         ]),
@@ -625,69 +648,144 @@ class _VentaScreenState extends State<VentaScreen> with SingleTickerProviderStat
       porFecha.putIfAbsent(v.fecha, () => []).add(v);
     }
 
-    return RefreshIndicator(
-      onRefresh: _cargarVentas,
-      child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        itemCount: porFecha.length,
-        itemBuilder: (_, i) {
-          final fecha = porFecha.keys.elementAt(i);
-          final items = porFecha[fecha]!;
-          final totalDia = items.fold(0, (acc, v) => acc + v.total);
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: porFecha.entries.map((entry) {
+        final fecha = entry.key;
+        final items = entry.value;
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  Text(fecha, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: SatoriColors.textDark)),
-                  Text('Total: \$$totalDia', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: SatoriColors.tealDark)),
-                ]),
+        final totalDia = items.fold(0, (acc, v) => acc + v.total);
+
+        // agrupar por orden
+        final Map<String, List<VentaRegistro>> porOrden = {};
+        for (var v in items) {
+          final key = v.ordenId ?? v.id;
+          porOrden.putIfAbsent(key, () => []).add(v);
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header fecha
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(fecha,
+                      style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: SatoriColors.textDark)),
+                  Text('Total: \$$totalDia',
+                      style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: SatoriColors.tealDark)),
+                ],
               ),
-              ...items.map((v) => Container(
+            ),
+
+            // Órdenes del día
+            ...porOrden.values.map((orden) {
+              final totalOrden = orden.fold(0, (acc, v) => acc + v.total);
+              final hora = orden.first.hora;
+              final cliente = orden.first.cliente;
+              final telefono = orden.first.telefono;
+              final metodo = orden.first.metodoPago;
+
+              return Container(
                 margin: const EdgeInsets.only(bottom: 8),
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.white, borderRadius: BorderRadius.circular(16),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6)],
-                ),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                    Text(v.producto, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: SatoriColors.textDark)),
-                    Text('\$${v.total}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: SatoriColors.tealDark)),
-                  ]),
-                  const SizedBox(height: 4),
-                  Row(children: [
-                    Text('x${v.cantidad}  ·  \$${v.precioUnitario} c/u', style: const TextStyle(fontSize: 12, color: SatoriColors.textMid)),
-                    const Spacer(),
-                    Text(v.hora, style: const TextStyle(fontSize: 12, color: SatoriColors.textMid)),
-                  ]),
-                  if (v.cliente != null || v.metodoPago.isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    const Divider(height: 1, color: SatoriColors.pinkLight),
-                    const SizedBox(height: 6),
-                    Row(children: [
-                      if (v.cliente != null) ...[
-                        const Text('👤 ', style: TextStyle(fontSize: 12)),
-                        Text(v.cliente!, style: const TextStyle(fontSize: 12, color: SatoriColors.textMid)),
-                        if (v.telefono != null) Text('  📞 ${v.telefono}', style: const TextStyle(fontSize: 12, color: SatoriColors.textMid)),
-                      ],
-                      const Spacer(),
-                      if (v.metodoPago.isNotEmpty)
-                        Text(v.metodoPago, style: const TextStyle(fontSize: 12, color: SatoriColors.textMid)),
-                    ]),
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                        color: Colors.black.withOpacity(0.05), blurRadius: 6)
                   ],
-                ]),
-              )),
-              const Divider(color: SatoriColors.pinkLight),
-            ],
-          );
-        },
-      ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Total + hora
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('\$${totalOrden}',
+                            style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: SatoriColors.tealDark)),
+                        Text(hora,
+                            style: const TextStyle(
+                                fontSize: 12,
+                                color: SatoriColors.textMid)),
+                      ],
+                    ),
+
+                    const SizedBox(height: 6),
+
+                    // Productos
+                    ...orden.map((v) => Padding(
+                          padding: const EdgeInsets.only(bottom: 2),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(v.producto,
+                                  style: const TextStyle(
+                                      fontSize: 13,
+                                      color: SatoriColors.textDark)),
+                              Text('x${v.cantidad}  \$${v.total}',
+                                  style: const TextStyle(
+                                      fontSize: 12,
+                                      color: SatoriColors.textMid)),
+                            ],
+                          ),
+                        )),
+
+                    // Info cliente / pago
+                    if (cliente != null || metodo.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      const Divider(
+                          height: 1, color: SatoriColors.pinkLight),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          if (cliente != null) ...[
+                            const Text('👤 ',
+                                style: TextStyle(fontSize: 12)),
+                            Text(cliente,
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    color: SatoriColors.textMid)),
+                            if (telefono != null)
+                              Text('  📞 $telefono',
+                                  style: const TextStyle(
+                                      fontSize: 12,
+                                      color: SatoriColors.textMid)),
+                          ],
+                          const Spacer(),
+                          if (metodo.isNotEmpty)
+                            Text(metodo,
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    color: SatoriColors.textMid)),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            }).toList(),
+
+            const Divider(color: SatoriColors.pinkLight),
+          ],
+        );
+      }).toList(),
     );
   }
-}
+
 
 // ─── WIDGETS ─────────────────────────────────────────────────────────────────
 class _CampoTexto extends StatelessWidget {
