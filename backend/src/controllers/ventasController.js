@@ -1,7 +1,7 @@
 const db = require("../config/db");
 
 exports.crearVenta = async (req, res) => {
-  const { producto, cantidad, precio_unitario, nombre, telefono, correo, metodo_pago, fecha } = req.body;
+  const { producto, cantidad, precio_unitario, nombre, telefono, correo, metodo_pago, fecha, orden_id } = req.body;
 
 
   const total = cantidad * precio_unitario;
@@ -27,10 +27,10 @@ exports.crearVenta = async (req, res) => {
     }
 
     const result = await db.query(
-      `INSERT INTO ventas(producto, cantidad, precio_unitario, total, cliente_id, metodo_pago, fecha)
-      VALUES($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO ventas(producto, cantidad, precio_unitario, total, cliente_id, metodo_pago, fecha, orden_id)
+      VALUES($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *`,
-      [producto, cantidad, precio_unitario, total, cliente_id, metodo_pago || null, fecha || null]
+      [producto, cantidad, precio_unitario, total, cliente_id, metodo_pago || null, fecha || null,  orden_id || null]
     );
 
     res.json(result.rows[0]);
